@@ -1,0 +1,38 @@
+/* ========== 主题色变量 ========== */
+$u-primary: #7EC8A0;
+$u-primary-light: #A8DFBE;
+$u-primary-dark: #5BA07A;
+
+/* ========== 功能色 ========== */
+$u-success: #67C23A;
+$u-warning: #E6A23C;
+$u-danger: #F56C6C;
+$u-info: #909399;
+
+/* ========== 文字色 ========== */
+$u-main-color: #303133;
+$u-content-color: #606266;
+$u-tips-color: #909399;
+$u-light-color: #C0C4CC;
+
+/* ========== 背景色 ========== */
+$u-bg-color: #F5F7FA;
+$u-bg-white: #FFFFFF;
+
+/* ========== 边框色 ========== */
+$u-border-color: #E4E7ED;
+
+/* ========== 营养元素颜色 ========== */
+$nutrition-protein: #FF6B6B;
+$nutrition-fat: #FFA94D;
+$nutrition-carbs: #4ECDC4;
+$nutrition-fiber: #A8E6CF;
+
+/* ========== 餐次颜色 ========== */
+$meal-breakfast: #FFD93D;
+$meal-lunch: #6BCB77;
+$meal-dinner: #4D96FF;
+$meal-snack: #FF8B94;
+
+/* ========== 引入 uView Plus 样式 ========== */
+@import 'uview-plus/theme.scss';

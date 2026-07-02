@@ -1,0 +1,32 @@
+{
+  "name": "nutrition-miniapp",
+  "version": "1.0.0",
+  "description": "食物热量与营养摄入统计微信小程序",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "dev:h5": "uni",
+    "build:h5": "uni build"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4020820240925001",
+    "@dcloudio/uni-app-plus": "3.0.0-4020820240925001",
+    "@dcloudio/uni-components": "3.0.0-4020820240925001",
+    "@dcloudio/uni-h5": "3.0.0-4020820240925001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4020820240925001",
+    "dayjs": "^1.11.13",
+    "pinia": "^2.1.7",
+    "uview-plus": "^3.3.48",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-automator": "3.0.0-4020820240925001",
+    "@dcloudio/uni-cli-shared": "3.0.0-4020820240925001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4020820240925001",
+    "@types/node": "^20.11.16",
+    "sass": "^1.70.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  }
+}

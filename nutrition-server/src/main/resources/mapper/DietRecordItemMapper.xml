@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nutrition.mapper.DietRecordItemMapper">
+
+    <resultMap id="DietItemVOResultMap" type="com.nutrition.vo.DietItemVO">
+        <id column="id" property="id"/>
+        <result column="food_id" property="foodId"/>
+        <result column="food_name" property="foodName"/>
+        <result column="weight" property="weight"/>
+        <result column="calories" property="calories"/>
+        <result column="protein" property="protein"/>
+        <result column="fat" property="fat"/>
+        <result column="carbs" property="carbs"/>
+    </resultMap>
+
+    <select id="findByRecordId" resultMap="DietItemVOResultMap">
+        SELECT id, food_id, food_name, weight, calories, protein, fat, carbs
+        FROM diet_record_item
+        WHERE record_id = #{recordId} ORDER BY id
+    </select>
+
+    <select id="findByUserAndMonth" resultMap="DietItemVOResultMap">
+        SELECT dri.id, dri.food_id, dri.food_name, dri.weight, dri.calories, dri.protein, dri.fat, dri.carbs
+        FROM diet_record_item dri
+        JOIN diet_record dr ON dri.record_id = dr.id
+        WHERE dr.user_id = #{userId}
+        AND YEAR(dr.record_date) = #{year} AND MONTH(dr.record_date) = #{month}
+    </select>
+
+    <delete id="deleteByRecordId">
+        DELETE FROM diet_record_item WHERE record_id = #{recordId}
+    </delete>
+
+</mapper>

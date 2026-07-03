@@ -24,6 +24,9 @@ public class JwtAuthFilter implements Filter {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/wx-login",
+            "/api/food/search",
+            "/api/food/categories",
+            "/api/food/",
     };
 
     @Override

@@ -30,7 +30,7 @@
     <scroll-view scroll-y class="food-list" @scrolltolower="loadMore">
       <FoodCard
         v-for="food in foodList"
-        :key="food.foodId || food.id"
+        :key="food.id"
         :food="food"
         @click="showFoodDetail(food)"
       />
@@ -167,7 +167,7 @@ async function loadMore() {
 
 async function showFoodDetail(food: any) {
   try {
-    const id = food.foodId || food.id
+    const id = food.id
     const res = await getFoodDetail(id)
     detailFood.value = res.data || food
   } catch (e) {
@@ -185,7 +185,7 @@ async function handleAddFromDetail() {
       recordDate: getToday(),
       mealType: detailMealType.value,
       items: [{
-        foodId: food.foodId || food.id,
+        foodId: food.id,
         foodName: food.foodName,
         weight: detailWeight.value,
       }],

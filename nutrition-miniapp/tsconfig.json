@@ -19,7 +19,7 @@
       "@stores/*": ["./src/stores/*"],
       "@utils/*": ["./src/utils/*"]
     },
-    "types": ["@dcloudio/types"]
+    "types": ["@dcloudio/types", "node"]
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
   "exclude": ["node_modules", "dist"]

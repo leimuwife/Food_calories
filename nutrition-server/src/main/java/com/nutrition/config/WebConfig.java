@@ -5,13 +5,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Web 配置 - 跨域 & 密码编码器
+ * Web 配置 - 跨域 & 密码编码器 & 全局路径前缀
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void configurePathMatch(PathMatchConfigurer configurer) {
+        configurer.addPathPrefix("/api", c -> true);
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

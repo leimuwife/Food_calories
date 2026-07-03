@@ -52,43 +52,5 @@
     "navigationBarTitleText": "营养助手",
     "navigationBarBackgroundColor": "#7EC8A0",
     "backgroundColor": "#F5F7FA"
-  },
-  "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#5BA07A",
-    "backgroundColor": "#FFFFFF",
-    "borderStyle": "black",
-    "list": [
-      {
-        "pagePath": "pages/index/index",
-        "text": "食光笔记",
-        "iconPath": "static/tabbar/home.png",
-        "selectedIconPath": "static/tabbar/home-active.png"
-      },
-      {
-        "pagePath": "pages/food-library/index",
-        "text": "食物库",
-        "iconPath": "static/tabbar/search.png",
-        "selectedIconPath": "static/tabbar/search-active.png"
-      },
-      {
-        "pagePath": "pages/statistics/index",
-        "text": "统计分析",
-        "iconPath": "static/tabbar/chart.png",
-        "selectedIconPath": "static/tabbar/chart-active.png"
-      },
-      {
-        "pagePath": "pages/history/index",
-        "text": "历史记录",
-        "iconPath": "static/tabbar/clock.png",
-        "selectedIconPath": "static/tabbar/clock-active.png"
-      },
-      {
-        "pagePath": "pages/profile/index",
-        "text": "个人中心",
-        "iconPath": "static/tabbar/user.png",
-        "selectedIconPath": "static/tabbar/user-active.png"
-      }
-    ]
   }
 }

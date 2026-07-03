@@ -1,0 +1,24 @@
+{
+  "name": "营养助手",
+  "appid": "__UNI__NUTRITION",
+  "description": "食物热量与营养摄入统计小程序",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "title": "营养助手",
+    "router": {
+      "mode": "hash"
+    },
+    "devServer": {
+      "port": 8080
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  }
+}

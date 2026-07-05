@@ -43,3 +43,15 @@ pnpm-debug.log*
 .preview
 
 .cozeproj/reduction
+
+target/
+*.class
+*.jar
+*.war
+# IDE 缓存
+.idea/
+*.iml
+# 前端编译产物（如果有）
+unpackage/
+dist/
+node_modules/

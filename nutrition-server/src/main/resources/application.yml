@@ -9,8 +9,10 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/nutrition_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: wcc1469854950
+    # MySQL 数据库用户名，从环境变量读取
+    username: ${DB_USERNAME:root}
+    # MySQL 数据库密码，从环境变量读取
+    password: ${DB_PASSWORD}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -32,7 +34,8 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: NutritionAssistantJwtSecretKey2024MustBeAtLeast256BitsLong!!  # 生产环境请更换为安全密钥
+  # JWT 签名密钥，从环境变量读取，生产环境必须设置安全密钥
+  secret: ${JWT_SECRET:NutritionAssistantJwtSecretKey2024MustBeAtLeast256BitsLong!!}
   expiration: 604800000  # 7天，单位毫秒
 
 # 第三方营养 API 配置（可选）

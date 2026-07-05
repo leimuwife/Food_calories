@@ -10,7 +10,7 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "食光笔记",
-        "navigationBarBackgroundColor": "#7EC8A0",
+        "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
     },
@@ -18,7 +18,7 @@
       "path": "pages/food-library/index",
       "style": {
         "navigationBarTitleText": "食物库",
-        "navigationBarBackgroundColor": "#7EC8A0",
+        "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
     },
@@ -26,7 +26,7 @@
       "path": "pages/statistics/index",
       "style": {
         "navigationBarTitleText": "统计分析",
-        "navigationBarBackgroundColor": "#7EC8A0",
+        "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
     },
@@ -34,7 +34,7 @@
       "path": "pages/history/index",
       "style": {
         "navigationBarTitleText": "历史记录",
-        "navigationBarBackgroundColor": "#7EC8A0",
+        "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
     },
@@ -42,20 +42,84 @@
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "个人中心",
-        "navigationBarBackgroundColor": "#7EC8A0",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/breakFast/index",
+      "style": {
+        "navigationBarTitleText": "早餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/breakFast/edit",
+      "style": {
+        "navigationBarTitleText": "编辑早餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/lunch/index",
+      "style": {
+        "navigationBarTitleText": "午餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/lunch/edit",
+      "style": {
+        "navigationBarTitleText": "编辑午餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/dinner/index",
+      "style": {
+        "navigationBarTitleText": "晚餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/dinner/edit",
+      "style": {
+        "navigationBarTitleText": "编辑晚餐",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/snack/index",
+      "style": {
+        "navigationBarTitleText": "夜宵",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/add/snack/edit",
+      "style": {
+        "navigationBarTitleText": "编辑夜宵",
+        "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
     }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "营养助手",
-    "navigationBarBackgroundColor": "#7EC8A0",
-    "backgroundColor": "#F5F7FA"
+    "navigationBarTitleText": "食光笔记",
+    "navigationBarBackgroundColor": "#FF69B4",
+    "backgroundColor": "#FFF9FA"
   },
   "tabBar": {
     "color": "#999999",
-    "selectedColor": "#5BA07A",
+    "selectedColor": "#FF69B4",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
     "list": [

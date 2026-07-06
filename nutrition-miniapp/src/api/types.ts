@@ -2,7 +2,7 @@ export interface UserVO {
   id: number
   openid: string
   nickname: string
-  avatar: string
+  fileIds: string | null
   email: string
   dailyCalorieGoal: number
   dailyProteinGoal: number
@@ -144,6 +144,6 @@ export type NutritionGoalUpdateParam = GoalUpdateParam
 
 export interface ProfileUpdateParam {
   nickname?: string
-  avatar?: string
+  fileIds?: string
   email?: string
 }

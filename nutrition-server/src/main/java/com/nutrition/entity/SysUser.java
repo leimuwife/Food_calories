@@ -20,9 +20,6 @@ public class SysUser {
     /** 昵称 */
     private String nickname;
 
-    /** 头像 URL */
-    private String avatar;
-
     /** 邮箱 */
     private String email;
 
@@ -43,6 +40,12 @@ public class SysUser {
 
     /** 每日碳水目标 (g) */
     private Integer dailyCarbsGoal;
+
+    /**
+     * 附件 ID 数组 JSON 字符串
+     */
+    @TableField("file_ids")
+    private String fileIds;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

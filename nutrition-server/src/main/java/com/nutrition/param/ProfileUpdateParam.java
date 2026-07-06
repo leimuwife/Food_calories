@@ -13,7 +13,7 @@ public class ProfileUpdateParam {
     @Size(max = 32, message = "昵称最长32位")
     private String nickname;
 
-    private String avatar;
+    private String fileId;
 
     @Size(max = 128, message = "邮箱最长128位")
     private String email;

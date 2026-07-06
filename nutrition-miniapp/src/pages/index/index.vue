@@ -180,14 +180,7 @@
             <circle cx="32" cy="16" r="2" fill="#333"/>
             <circle cx="30" cy="15" r="0.8" fill="#fff"/>
           </template>
-          <template v-else-if="tab.key === 'message'">
-            <rect x="16" y="20" width="32" height="28" rx="4" fill="#FFB6C1"/>
-            <path d="M16 24 Q32 36 48 24" stroke="#FF69B4" stroke-width="2" fill="none"/>
-            <circle cx="48" cy="28" r="10" fill="#FFB6C1"/>
-            <circle cx="50" cy="26" r="2" fill="#333"/>
-            <circle cx="51" cy="25" r="0.8" fill="#fff"/>
-            <path d="M48 30 Q46 32 48 34 Q50 32 48 30" stroke="#333" stroke-width="1" fill="none"/>
-          </template>
+          
           <template v-else-if="tab.key === 'circle'">
             <circle cx="32" cy="32" r="20" fill="#FFB6C1"/>
             <circle cx="26" cy="28" r="3" fill="#333"/>
@@ -221,8 +214,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
 import { getTodayRecords, getDailySummary, searchFood } from '@/api/shouye'
 import { getToday } from '@/utils'
+
+const userStore = useUserStore()
 
 interface FoodListItem {
   id: number
@@ -246,7 +242,6 @@ const quickItems = [
 
 const tabItems = [
   { key: 'home', name: '首页' },
-  { key: 'message', name: '私信' },
   { key: 'circle', name: '轻友圈' },
   { key: 'profile', name: '我的' },
 ]
@@ -327,6 +322,10 @@ function handleTabTap(key: string) {
 }
 
 onMounted(() => {
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/weChatLogin/index' })
+    return
+  }
   loadTodayData()
 })
 </script>

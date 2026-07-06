@@ -2,7 +2,7 @@
   <view class="page-container">
     <!-- 用户信息 -->
     <view class="profile-header">
-      <image class="avatar" :src="userStore.userInfo?.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+      <image class="avatar" :src="getAvatarUrl(userStore.userInfo?.fileIds)" mode="aspectFill" />
       <view class="profile-info">
         <text class="profile-name">{{ userStore.userInfo?.nickname || '未登录' }}</text>
         <text class="profile-email">{{ userStore.userInfo?.email || '点击登录体验完整功能' }}</text>
@@ -145,6 +145,25 @@ import { getToday, formatDate } from '@/utils'
 
 const userStore = useUserStore()
 
+function getAvatarUrl(fileIds: string | null | undefined): string {
+  if (!fileIds) {
+    return '/static/images/default-avatar.png'
+  }
+  let firstId: string | null = null
+  try {
+    const ids = JSON.parse(fileIds)
+    if (Array.isArray(ids) && ids.length > 0) {
+      firstId = String(ids[0])
+    }
+  } catch {
+    const parts = fileIds.split(',')
+    if (parts.length > 0) {
+      firstId = parts[0].trim()
+    }
+  }
+  return firstId ? `/api/attachment/${firstId}/url` : '/static/images/default-avatar.png'
+}
+
 // 登录
 const showLoginDialog = ref(false)
 const loginForm = reactive({ username: '', password: '' })
@@ -164,7 +183,7 @@ const showDisclaimer = ref(false)
 const showAbout = ref(false)
 
 async function handleWxLogin() {
-  uni.showToast({ title: '请在微信小程序中登录', icon: 'none' })
+  uni.navigateTo({ url: '/pages/weChatLogin/index' })
 }
 
 async function handleLogin() {

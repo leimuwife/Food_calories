@@ -82,13 +82,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
                 .eq(SysUser::getOpenid, mockOpenid));
 
         if (user == null) {
-            user = new SysUser();
-            user.setOpenid(mockOpenid);
-            user.setNickname("微信用户");
-            user.setDailyCalorieGoal(2000);
-            user.setDailyProteinGoal(60);
-            user.setDailyFatGoal(55);
-            user.setDailyCarbsGoal(250);
+            user = createMockUser(code, mockOpenid);
             this.save(user);
         }
 
@@ -98,6 +92,53 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         result.setToken(token);
         result.setUser(convertToVO(user));
         return result;
+    }
+
+    private SysUser createMockUser(String code, String openid) {
+        SysUser user = new SysUser();
+        user.setOpenid(openid);
+
+        return switch (code) {
+            case "test_code_user1" -> {
+                user.setNickname("张三");
+                user.setUsername("zhangsan");
+                user.setEmail("zhangsan@example.com");
+                user.setDailyCalorieGoal(2000);
+                user.setDailyProteinGoal(60);
+                user.setDailyFatGoal(55);
+                user.setDailyCarbsGoal(250);
+                yield user;
+            }
+            case "test_code_user2" -> {
+                user.setNickname("李四");
+                user.setUsername("lisi");
+                user.setEmail("lisi@example.com");
+                user.setDailyCalorieGoal(1800);
+                user.setDailyProteinGoal(55);
+                user.setDailyFatGoal(50);
+                user.setDailyCarbsGoal(220);
+                yield user;
+            }
+            case "test_code_nutritionist" -> {
+                user.setNickname("小张营养师");
+                user.setUsername("nutritionist_zhang");
+                user.setEmail("zhang@nutrition.com");
+                user.setDailyCalorieGoal(2200);
+                user.setDailyProteinGoal(70);
+                user.setDailyFatGoal(60);
+                user.setDailyCarbsGoal(280);
+                yield user;
+            }
+            default -> {
+                user.setNickname("微信用户");
+                user.setUsername("wx_user_" + System.currentTimeMillis());
+                user.setDailyCalorieGoal(2000);
+                user.setDailyProteinGoal(60);
+                user.setDailyFatGoal(55);
+                user.setDailyCarbsGoal(250);
+                yield user;
+            }
+        };
     }
 
     @Override
@@ -117,8 +158,8 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         if (StrUtil.isNotBlank(updateInfo.getNickname())) {
             user.setNickname(updateInfo.getNickname());
         }
-        if (StrUtil.isNotBlank(updateInfo.getAvatar())) {
-            user.setAvatar(updateInfo.getAvatar());
+        if (StrUtil.isNotBlank(updateInfo.getFileId())) {
+            user.setFileIds(updateInfo.getFileId());
         }
         if (StrUtil.isNotBlank(updateInfo.getEmail())) {
             user.setEmail(updateInfo.getEmail());
@@ -145,7 +186,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         vo.setId(user.getId());
         vo.setOpenid(user.getOpenid());
         vo.setNickname(user.getNickname());
-        vo.setAvatar(user.getAvatar());
+        vo.setFileIds(user.getFileIds());
         vo.setEmail(user.getEmail());
         vo.setDailyCalorieGoal(user.getDailyCalorieGoal());
         vo.setDailyProteinGoal(user.getDailyProteinGoal());

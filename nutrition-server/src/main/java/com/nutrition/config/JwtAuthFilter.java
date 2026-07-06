@@ -27,6 +27,7 @@ public class JwtAuthFilter implements Filter {
             "/api/food/search",
             "/api/food/categories",
             "/api/food/",
+            "/api/attachment/",
     };
 
     @Override

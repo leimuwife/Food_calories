@@ -147,3 +147,56 @@ export interface ProfileUpdateParam {
   fileIds?: string
   email?: string
 }
+
+export interface FeedComment {
+  id: number
+  userId: number
+  userName: string
+  content: string
+  createTime: string
+}
+
+export interface FeedItem {
+  id: number
+  userId: number
+  userName: string
+  userAvatar: string | null
+  content: string
+  images: string[]
+  fileIds: string[]
+  likeCount: number
+  isLiked: boolean
+  commentCount: number
+  comments: FeedComment[]
+  publishTime: string
+  createTime: string
+}
+
+export interface FeedPublishParam {
+  content: string
+  fileIds: number[]
+}
+
+export interface FeedListResult {
+  list: FeedItem[]
+  total: number
+  hasMore: boolean
+}
+
+export interface ChatMessage {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  images?: string[]
+  fileIds?: number[]
+  createTime: string
+}
+
+export interface NutritionistChatParam {
+  content: string
+  fileIds?: number[]
+}
+
+export interface NutritionistChatResult {
+  message: ChatMessage
+}

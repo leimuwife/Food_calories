@@ -116,6 +116,49 @@
         "navigationBarBackgroundColor": "#FF69B4",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/daka/index",
+      "style": {
+        "navigationBarTitleText": "减肥打卡",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/qingyouquan/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "轻友圈"
+      }
+    },
+    {
+      "path": "pages/qingyouquan/publish",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "发布动态"
+      }
+    },
+    {
+      "path": "pages/wode/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/wode/edit",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "编辑资料"
+      }
+    },
+    {
+      "path": "pages/yingyangshi/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "小张营养师"
+      }
     }
   ],
   "globalStyle": {

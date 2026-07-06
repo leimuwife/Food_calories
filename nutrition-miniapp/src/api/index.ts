@@ -14,6 +14,12 @@ import type {
   DietRecordParam,
   GoalUpdateParam,
   ProfileUpdateParam,
+  FeedItem,
+  FeedPublishParam,
+  FeedListResult,
+  ChatMessage,
+  NutritionistChatParam,
+  NutritionistChatResult,
 } from './types'
 
 const BASE_URL = 'http://localhost:8088'
@@ -227,6 +233,81 @@ export function exportData(startDate: string, endDate: string) {
   })
 }
 
+export function getFeedList(pageNum: number, pageSize: number) {
+  return request<FeedListResult>({
+    url: '/api/feed/list',
+    method: 'GET',
+    data: { pageNum, pageSize },
+  })
+}
+
+export function publishFeed(data: FeedPublishParam) {
+  return request({
+    url: '/api/feed/publish',
+    method: 'POST',
+    data,
+  })
+}
+
+export function toggleFeedLike(feedId: number) {
+  return request({
+    url: `/api/feed/${feedId}/like`,
+    method: 'POST',
+  })
+}
+
+export function addFeedComment(feedId: number, content: string) {
+  return request({
+    url: `/api/feed/${feedId}/comment`,
+    method: 'POST',
+    data: { content },
+  })
+}
+
+export function uploadAttachment(filePath: string) {
+  const userStore = useUserStore()
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: BASE_URL + '/api/attachment/upload',
+      filePath,
+      name: 'file',
+      header: {
+        'Authorization': `Bearer ${userStore.token}`
+      },
+      success: (res) => {
+        try {
+          const responseData = JSON.parse(res.data)
+          if (responseData.code === 200) {
+            resolve(responseData.data)
+          } else {
+            uni.showToast({ title: responseData.message || '上传失败', icon: 'none' })
+            reject(new Error(responseData.message))
+          }
+        } catch {
+          uni.showToast({ title: '上传失败', icon: 'none' })
+          reject(new Error('Upload failed'))
+        }
+      },
+      fail: (err) => {
+        uni.showToast({ title: '上传失败', icon: 'none' })
+        reject(err)
+      }
+    })
+  })
+}
+
+export function getAttachmentUrl(fileId: number) {
+  return `/api/attachment/${fileId}/url`
+}
+
+export function nutritionistChat(data: NutritionistChatParam) {
+  return request<NutritionistChatResult>({
+    url: '/api/nutritionist/chat',
+    method: 'POST',
+    data,
+  })
+}
+
 export default {
   wxLogin,
   accountLogin,
@@ -246,4 +327,11 @@ export default {
   getDailySummary,
   getMonthlySummary,
   exportData,
+  getFeedList,
+  publishFeed,
+  toggleFeedLike,
+  addFeedComment,
+  uploadAttachment,
+  getAttachmentUrl,
+  nutritionistChat,
 }

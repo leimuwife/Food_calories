@@ -4,16 +4,19 @@
       <view class="card-header">
         <text class="card-title">食光笔记</text>
         <view class="checkin-btn" @tap="handleCheckin">
-          <svg viewBox="0 0 64 64" class="icon">
-            <circle cx="32" cy="32" r="28" fill="#FFB6C1"/>
-            <circle cx="24" cy="28" r="4" fill="#333"/>
-            <circle cx="40" cy="28" r="4" fill="#333"/>
-            <circle cx="25" cy="27" r="1.5" fill="#fff"/>
-            <circle cx="41" cy="27" r="1.5" fill="#fff"/>
-            <path d="M32 36 Q30 40 32 44 Q34 40 32 36" stroke="#333" stroke-width="2" fill="none"/>
-            <rect x="38" y="18" width="14" height="12" rx="2" fill="#FF69B4"/>
-            <text x="45" y="27" font-size="8" fill="#fff" text-anchor="middle">20</text>
-          </svg>
+          <view class="checkin-icon-wrap">
+            <svg viewBox="0 0 64 64" class="icon">
+              <circle cx="32" cy="32" r="28" fill="#FFB6C1"/>
+              <circle cx="24" cy="28" r="4" fill="#333"/>
+              <circle cx="40" cy="28" r="4" fill="#333"/>
+              <circle cx="25" cy="27" r="1.5" fill="#fff"/>
+              <circle cx="41" cy="27" r="1.5" fill="#fff"/>
+              <path d="M32 36 Q30 40 32 44 Q34 40 32 36" stroke="#333" stroke-width="2" fill="none"/>
+              <rect x="38" y="18" width="14" height="12" rx="2" fill="#FF69B4"/>
+              <text x="45" y="27" font-size="8" fill="#fff" text-anchor="middle">OK</text>
+            </svg>
+          </view>
+          <text class="checkin-text">减肥打卡</text>
         </view>
       </view>
       <view class="calorie-display">
@@ -296,7 +299,7 @@ async function handleSearch(keyword: string) {
 }
 
 function handleCheckin() {
-  console.log('Checkin tap')
+  uni.navigateTo({ url: '/pages/daka/index' })
 }
 
 function handleHistory() {
@@ -313,12 +316,18 @@ function handleQuickTap(key: string) {
     uni.navigateTo({ url: '/pages/add/dinner/index' })
   } else if (key === 'snack') {
     uni.navigateTo({ url: '/pages/add/snack/index' })
+  } else if (key === 'nutritionist') {
+    uni.navigateTo({ url: '/pages/yingyangshi/index' })
   }
 }
 
 function handleTabTap(key: string) {
   activeTab.value = key
-  console.log('Tab tap:', key)
+  if (key === 'circle') {
+    uni.navigateTo({ url: '/pages/qingyouquan/index' })
+  } else if (key === 'profile') {
+    uni.navigateTo({ url: '/pages/wode/index' })
+  }
 }
 
 onMounted(() => {
@@ -379,13 +388,30 @@ onMounted(() => {
 }
 
 .checkin-btn {
-  width: 64rpx;
-  height: 64rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
 }
 
-.checkin-btn .icon {
+.checkin-icon-wrap {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 20rpx;
+  border: 3rpx solid rgba(255, 182, 193, 0.6);
+  padding: 6rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.checkin-icon-wrap .icon {
   width: 100%;
   height: 100%;
+}
+
+.checkin-text {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
 }
 
 .calorie-display {

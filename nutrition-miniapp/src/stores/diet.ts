@@ -50,7 +50,7 @@ export const useDietStore = defineStore('diet', () => {
     breakfast: '早餐',
     lunch: '午餐',
     dinner: '晚餐',
-    snack: '加餐',
+    snack: '夜宵',
   }
 
   /** 获取餐次中文名 */

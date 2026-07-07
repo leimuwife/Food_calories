@@ -17,8 +17,10 @@ public class Common {
     private LocalDateTime createTime;
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
+    @Schema(description = "更新时间")
     private LocalDateTime updateTime;
 
     /** 逻辑删除 0正常 1已删除 */
-    private String deleteFlag;
+    @Schema(description = "逻辑删除 0正常 1已删除")
+    private Integer deleteFlag;
 }

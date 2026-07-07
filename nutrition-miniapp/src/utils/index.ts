@@ -32,7 +32,7 @@ export const MEAL_TYPE_MAP: Record<MealType, string> = {
   breakfast: '早餐',
   lunch: '午餐',
   dinner: '晚餐',
-  snack: '加餐',
+  snack: '夜宵',
 }
 
 /** 餐次选项列表 */
@@ -40,7 +40,7 @@ export const MEAL_OPTIONS: { label: string; value: MealType }[] = [
   { label: '早餐', value: 'breakfast' },
   { label: '午餐', value: 'lunch' },
   { label: '晚餐', value: 'dinner' },
-  { label: '加餐', value: 'snack' },
+  { label: '夜宵', value: 'snack' },
 ]
 
 /** 食物分类颜色映射 */

@@ -27,7 +27,7 @@ public class JwtUtil {
     }
 
     /** 生成 JWT 令牌 */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(String userId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);

@@ -2,7 +2,6 @@ package com.nutrition.controller;
 
 import com.nutrition.common.Result;
 import com.nutrition.entity.SysUser;
-import com.nutrition.param.GoalUpdateParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.service.UserService;
 import com.nutrition.vo.UserVO;
@@ -37,14 +36,5 @@ public class UserController {
         Long userId = (Long) request.getAttribute("userId");
         userService.updateProfile(userId, updateInfo);
         return Result.ok("更新成功", null);
-    }
-
-    /** 更新营养目标 */
-    @PutMapping("/goal")
-    public Result<Void> updateGoals(HttpServletRequest request,
-                                     @Valid @RequestBody GoalUpdateParam goals) {
-        Long userId = (Long) request.getAttribute("userId");
-        userService.updateGoals(userId, goals);
-        return Result.ok("目标更新成功", null);
     }
 }

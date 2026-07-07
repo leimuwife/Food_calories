@@ -1,7 +1,6 @@
 package com.nutrition.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.nutrition.param.GoalUpdateParam;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.param.RegisterParam;
@@ -20,8 +19,6 @@ public interface UserService extends IService<SysUser> {
     SysUser getCurrentUser(Long userId);
 
     void updateProfile(Long userId, ProfileUpdateParam updateInfo);
-
-    void updateGoals(Long userId, GoalUpdateParam goals);
 
     UserVO convertToVO(SysUser user);
 }

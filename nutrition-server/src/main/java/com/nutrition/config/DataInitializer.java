@@ -38,10 +38,6 @@ public class DataInitializer implements CommandLineRunner {
             testUser.setUsername("test");
             testUser.setPasswordHash(passwordEncoder.encode("123456"));
             testUser.setNickname("测试用户");
-            testUser.setDailyCalorieGoal(2000);
-            testUser.setDailyProteinGoal(60);
-            testUser.setDailyFatGoal(55);
-            testUser.setDailyCarbsGoal(250);
             testUser.setCreateTime(LocalDateTime.now());
             testUser.setUpdateTime(LocalDateTime.now());
             

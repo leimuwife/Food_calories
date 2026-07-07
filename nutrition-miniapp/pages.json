@@ -23,14 +23,6 @@
       }
     },
     {
-      "path": "pages/statistics/index",
-      "style": {
-        "navigationBarTitleText": "统计分析",
-        "navigationBarBackgroundColor": "#FF69B4",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/history/index",
       "style": {
         "navigationBarTitleText": "历史记录",
@@ -134,12 +126,6 @@
         "text": "食物库",
         "iconPath": "static/tabbar/search.png",
         "selectedIconPath": "static/tabbar/search-active.png"
-      },
-      {
-        "pagePath": "pages/statistics/index",
-        "text": "统计分析",
-        "iconPath": "static/tabbar/chart.png",
-        "selectedIconPath": "static/tabbar/chart-active.png"
       },
       {
         "pagePath": "pages/history/index",

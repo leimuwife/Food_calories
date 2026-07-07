@@ -30,14 +30,6 @@
       }
     },
     {
-      "path": "pages/statistics/index",
-      "style": {
-        "navigationBarTitleText": "统计分析",
-        "navigationBarBackgroundColor": "#FF69B4",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "个人中心",

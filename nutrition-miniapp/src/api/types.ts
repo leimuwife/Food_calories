@@ -15,69 +15,43 @@ export interface LoginResultVO {
   user: UserVO
 }
 
-export interface FoodVO {
-  id: number
-  foodName: string
-  category: string
-  caloriesPer100g: number
-  proteinPer100g: number
-  fatPer100g: number
-  carbsPer100g: number
-  fiberPer100g: number
-  ediblePortion: number
-  dataSource: string
+export enum MealType {
+  BREAKFAST = 'breakfast',
+  LUNCH = 'lunch',
+  DINNER = 'dinner',
+  SNACK = 'snack'
 }
 
-export interface FoodCategoryVO {
-  category: string
-}
-
-export interface FoodSearchResultVO {
-  list: FoodVO[]
-  total: number
+export const MealTypeNameMap: Record<MealType, string> = {
+  [MealType.BREAKFAST]: '早餐',
+  [MealType.LUNCH]: '午餐',
+  [MealType.DINNER]: '晚餐',
+  [MealType.SNACK]: '夜宵'
 }
 
 export interface DietItemVO {
   id: number
   recordId: number
-  foodId: number
   foodName: string
+  foodDesc?: string
   weight: number
   calories: number
-  protein: number
-  fat: number
-  carbs: number
+  remark?: string
 }
 
 export interface DietRecordVO {
   id: number
   recordDate: string
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  mealType: MealType
   items: DietItemVO[]
-  remark?: string
 }
 
 export interface DailySummaryVO {
   totalCalories: number
-  totalProtein: number
-  totalFat: number
-  totalCarbs: number
   calorieGoal: number
-  proteinGoal: number
-  fatGoal: number
-  carbsGoal: number
   caloriePercent: number
-  proteinPercent: number
-  fatPercent: number
-  carbsPercent: number
-  proteinRatio: number
-  fatRatio: number
-  carbsRatio: number
   meals: Record<string, {
     calories: number
-    protein: number
-    fat: number
-    carbs: number
     items: DietItemVO[]
   }>
 }
@@ -89,9 +63,6 @@ export interface DailyDietVO {
 
 export interface MonthlySummaryVO {
   avgDailyCalories: number
-  avgProteinRatio: number
-  avgFatRatio: number
-  avgCarbsRatio: number
   dailyTrend: DailyTrendVO[]
   topFoods: TopFoodVO[]
   totalDays: number
@@ -124,20 +95,13 @@ export interface WxLoginParam {
 
 export interface DietRecordParam {
   recordDate: string
-  mealType: string
-  items: { foodId: number; foodName: string; weight: number }[]
+  mealType: MealType
+  items: { foodName: string; foodDesc?: string; weight: number; calories: number; remark?: string }[]
   remark?: string
-}
-
-export interface DietItemUpdateParam {
-  weight: number
 }
 
 export interface GoalUpdateParam {
   dailyCalorieGoal?: number
-  dailyProteinGoal?: number
-  dailyFatGoal?: number
-  dailyCarbsGoal?: number
 }
 
 export type NutritionGoalUpdateParam = GoalUpdateParam
@@ -162,7 +126,6 @@ export interface FeedItem {
   userName: string
   userAvatar: string | null
   content: string
-  images: string[]
   fileIds: string[]
   likeCount: number
   isLiked: boolean
@@ -174,7 +137,7 @@ export interface FeedItem {
 
 export interface FeedPublishParam {
   content: string
-  fileIds: number[]
+  fileIds: string[]
 }
 
 export interface FeedListResult {
@@ -188,13 +151,13 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   images?: string[]
-  fileIds?: number[]
+  fileIds?: string[]
   createTime: string
 }
 
 export interface NutritionistChatParam {
   content: string
-  fileIds?: number[]
+  fileIds?: string[]
 }
 
 export interface NutritionistChatResult {

@@ -139,7 +139,8 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { accountLogin, register, updateNutritionGoal, exportData } from '@/api'
+import { accountLogin, register, exportData } from '@/api'
+import { updateNutritionGoal } from '@/api/wode/wode'
 import type { RegisterParam, NutritionGoalUpdateParam } from '@/api/types'
 import { getToday, formatDate } from '@/utils'
 

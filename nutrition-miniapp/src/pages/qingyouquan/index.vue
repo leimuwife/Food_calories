@@ -61,12 +61,12 @@
           <text class="content-text">{{ feed.content }}</text>
         </view>
 
-        <view v-if="feed.images && feed.images.length > 0" class="feed-images">
+        <view v-if="feed.fileIds && feed.fileIds.length > 0" class="feed-images">
           <view 
-            v-for="(img, idx) in feed.images" 
+            v-for="(img, idx) in getFeedImages(feed.fileIds)" 
             :key="idx" 
-            :class="getImageClass(feed.images.length, idx)"
-            @tap="previewImage(feed.images, idx)"
+            :class="getImageClass(feed.fileIds.length, idx)"
+            @tap="previewImage(getFeedImages(feed.fileIds), idx)"
           >
             <image :src="img" class="feed-image" mode="aspectFill"/>
           </view>
@@ -142,7 +142,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { FeedItem, FeedComment } from '@/api/types'
-import { getFeedList, toggleFeedLike, addFeedComment } from '@/api'
+import { getFeedList, toggleFeedLike, addFeedComment } from '@/api/qingyouquan/qingyouquan'
 
 const feedList = ref<FeedItem[]>([])
 const pageNum = ref(1)
@@ -171,6 +171,10 @@ function getAvatarUrl(avatar: string | null): string {
     }
   }
   return firstId ? `/api/attachment/${firstId}/url` : '/static/images/AI/nutritionist.png'
+}
+
+function getFeedImages(fileIds: string[]): string[] {
+  return fileIds.map(id => `/api/attachment/${id}/url`)
 }
 
 function getImageClass(total: number, index: number): string {
@@ -263,56 +267,53 @@ async function loadFeedList(isRefresh = false) {
     console.error('加载动态失败:', e)
     
     feedList.value = [
-      {
-        id: Date.now() - 10000,
-        userId: 1,
-        userName: '张三',
-        userAvatar: null,
-        content: '今天的早餐很丰盛！水煮西兰花 + 全麦面包 + 牛奶，热量控制得很好～',
-        images: [],
-        fileIds: [],
-        likeCount: 23,
-        isLiked: false,
-        commentCount: 5,
-        comments: [
-          { id: 1, userId: 2, userName: '李四', content: '看起来好好吃！', createTime: '10分钟前' },
-          { id: 2, userId: 3, userName: '营养师', content: '搭配很均衡，继续保持！', createTime: '20分钟前' },
-          { id: 3, userId: 4, userName: '小红', content: '请问西兰花是水煮还是清蒸呀？', createTime: '30分钟前' }
-        ],
-        publishTime: '1小时前',
-        createTime: new Date().toISOString()
-      },
-      {
-        id: Date.now() - 20000,
-        userId: 2,
-        userName: '李四',
-        userAvatar: null,
-        content: '打卡第7天！体重下降了3斤，好开心～',
-        images: [],
-        fileIds: [],
-        likeCount: 56,
-        isLiked: true,
-        commentCount: 8,
-        comments: [
-          { id: 4, userId: 1, userName: '张三', content: '太棒了！恭喜恭喜', createTime: '5分钟前' },
-          { id: 5, userId: 5, userName: '小明', content: '求分享减肥经验！', createTime: '15分钟前' }
-        ],
-        publishTime: '2小时前',
-        createTime: new Date().toISOString()
-      },
-      {
-        id: Date.now() - 30000,
-        userId: 3,
-        userName: '小张营养师',
-        userAvatar: null,
-        content: '今日营养小贴士：晚餐尽量在7点前吃完，给肠胃足够的消化时间～',
-        images: [],
-        fileIds: [],
-        likeCount: 89,
-        isLiked: false,
-        commentCount: 12,
-        comments: [
-          { id: 6, userId: 1, userName: '张三', content: '学到了！', createTime: '刚刚' },
+        {
+          id: Date.now() - 10000,
+          userId: 1,
+          userName: '张三',
+          userAvatar: null,
+          content: '今天的早餐很丰盛！水煮西兰花 + 全麦面包 + 牛奶，热量控制得很好～',
+          fileIds: [],
+          likeCount: 23,
+          isLiked: false,
+          commentCount: 5,
+          comments: [
+            { id: 1, userId: 2, userName: '李四', content: '看起来好好吃！', createTime: '10分钟前' },
+            { id: 2, userId: 3, userName: '营养师', content: '搭配很均衡，继续保持！', createTime: '20分钟前' },
+            { id: 3, userId: 4, userName: '小红', content: '请问西兰花是水煮还是清蒸呀？', createTime: '30分钟前' }
+          ],
+          publishTime: '1小时前',
+          createTime: new Date().toISOString()
+        },
+        {
+          id: Date.now() - 20000,
+          userId: 2,
+          userName: '李四',
+          userAvatar: null,
+          content: '打卡第7天！体重下降了3斤，好开心～',
+          fileIds: [],
+          likeCount: 56,
+          isLiked: true,
+          commentCount: 8,
+          comments: [
+            { id: 4, userId: 1, userName: '张三', content: '太棒了！恭喜恭喜', createTime: '5分钟前' },
+            { id: 5, userId: 5, userName: '小明', content: '求分享减肥经验！', createTime: '15分钟前' }
+          ],
+          publishTime: '2小时前',
+          createTime: new Date().toISOString()
+        },
+        {
+          id: Date.now() - 30000,
+          userId: 3,
+          userName: '小张营养师',
+          userAvatar: null,
+          content: '今日营养小贴士：晚餐尽量在7点前吃完，给肠胃足够的消化时间～',
+          fileIds: [],
+          likeCount: 89,
+          isLiked: false,
+          commentCount: 12,
+          comments: [
+            { id: 6, userId: 1, userName: '张三', content: '学到了！', createTime: '刚刚' },
           { id: 7, userId: 2, userName: '李四', content: '感谢营养师的建议', createTime: '3分钟前' },
           { id: 8, userId: 6, userName: '小华', content: '坚持了一周，效果不错', createTime: '8分钟前' },
           { id: 9, userId: 7, userName: '小雪', content: '真的有用！', createTime: '12分钟前' }

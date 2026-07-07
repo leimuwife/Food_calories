@@ -117,7 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { checkin, cancelCheckin, getCheckinDates } from '@/api/daka/daka'
 
 const weekdays = ['日', '一', '二', '三', '四', '五', '六']
 const currentYear = ref(new Date().getFullYear())
@@ -210,10 +211,12 @@ const calendarDates = computed<CalendarDate[]>(() => {
 
 function prevYear() {
   currentYear.value--
+  loadCheckinData()
 }
 
 function nextYear() {
   currentYear.value++
+  loadCheckinData()
 }
 
 function prevMonth() {
@@ -223,6 +226,7 @@ function prevMonth() {
   } else {
     currentMonth.value--
   }
+  loadCheckinData()
 }
 
 function nextMonth() {
@@ -232,6 +236,7 @@ function nextMonth() {
   } else {
     currentMonth.value++
   }
+  loadCheckinData()
 }
 
 function isFutureDate(date: CalendarDate): boolean {
@@ -276,23 +281,49 @@ function getDateClass(date: CalendarDate): string {
   return classes.join(' ')
 }
 
-function handleDateTap(date: CalendarDate) {
+async function handleDateTap(date: CalendarDate) {
   if (!date.isCurrentMonth || isFutureDate(date)) return
   
   const key = formatDateKey(date.year, date.month, date.day)
   if (selectedDates.value.has(key)) {
-    selectedDates.value.delete(key)
+    try {
+      await cancelCheckin(key)
+      selectedDates.value.delete(key)
+      selectedDates.value = new Set(selectedDates.value)
+    } catch (e) {
+      console.error('取消打卡失败:', e)
+    }
   } else {
-    selectedDates.value.add(key)
+    try {
+      await checkin(key)
+      selectedDates.value.add(key)
+      selectedDates.value = new Set(selectedDates.value)
+    } catch (e) {
+      console.error('打卡失败:', e)
+    }
   }
-  selectedDates.value = new Set(selectedDates.value)
 }
 
 function confirmMonthPicker() {
   currentYear.value = pickerYear.value
   currentMonth.value = pickerMonth.value
   showMonthPicker.value = false
+  loadCheckinData()
 }
+
+async function loadCheckinData() {
+  try {
+    const res = await getCheckinDates(currentYear.value, currentMonth.value)
+    const dates = res.data.dates || []
+    selectedDates.value = new Set(dates)
+  } catch (e) {
+    console.error('加载打卡数据失败:', e)
+  }
+}
+
+onMounted(() => {
+  loadCheckinData()
+})
 </script>
 
 <style lang="scss" scoped>

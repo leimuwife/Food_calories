@@ -303,7 +303,7 @@ function handleCheckin() {
 }
 
 function handleHistory() {
-  console.log('History tap')
+  uni.navigateTo({ url: '/pages/history/index' })
 }
 
 function handleQuickTap(key: string) {

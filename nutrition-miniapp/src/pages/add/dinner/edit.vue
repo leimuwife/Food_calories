@@ -38,6 +38,20 @@
         </view>
 
         <view class="form-item">
+          <text class="form-label">食用重量</text>
+          <view class="weight-input-wrap">
+            <input 
+              v-model="formData.weight" 
+              class="form-input weight-input" 
+              placeholder="0"
+              placeholder-class="form-placeholder"
+              type="digit"
+            />
+            <text class="weight-unit">g</text>
+          </view>
+        </view>
+
+        <view class="form-item">
           <text class="form-label">热量</text>
           <view class="calorie-row">
             <view class="calorie-input-wrap">
@@ -71,6 +85,17 @@
           </view>
           <text class="calorie-hint">AI 热量仅为估算参考，可手动调整真实数值</text>
         </view>
+
+        <view class="form-item">
+          <text class="form-label">备注</text>
+          <textarea 
+            v-model="formData.remark" 
+            class="form-textarea" 
+            placeholder="添加备注（选填）"
+            placeholder-class="form-placeholder"
+            :maxlength="-1"
+          />
+        </view>
       </view>
     </scroll-view>
 
@@ -101,19 +126,24 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { estimateCalories, addDietRecord } from '@/api/add/add'
+import type { MealType } from '@/api/types'
 
 interface FoodItem {
   id: number
   name: string
   calories: number
   description?: string
-  image?: string
+  weight?: number
+  remark?: string
 }
 
 interface FormData {
   name: string
   description: string
+  weight: string
   calories: string
+  remark: string
 }
 
 const mode = ref<'add' | 'edit'>('add')
@@ -121,14 +151,18 @@ const isLoading = ref(false)
 const formData = ref<FormData>({
   name: '',
   description: '',
+  weight: '',
   calories: '',
+  remark: '',
 })
 
 function resetForm() {
   formData.value = {
     name: '',
     description: '',
+    weight: '',
     calories: '',
+    remark: '',
   }
 }
 
@@ -152,21 +186,18 @@ async function handleAiEstimate() {
   isLoading.value = true
 
   try {
-    const mockResult = await mockAiCalorieApi(description)
+    const res = await estimateCalories(description)
+    const calories = res.data.calories
     
-    if (mockResult && typeof mockResult === 'number') {
-      if (mockResult >= 0 && mockResult <= 10000) {
-        formData.value.calories = String(Math.round(mockResult))
-        uni.showToast({
-          title: 'AI 估算成功',
-          icon: 'success',
-          duration: 1500,
-        })
-      } else {
-        throw new Error('异常数值')
-      }
+    if (calories >= 0 && calories <= 10000) {
+      formData.value.calories = String(Math.round(calories))
+      uni.showToast({
+        title: 'AI 估算成功',
+        icon: 'success',
+        duration: 1500,
+      })
     } else {
-      throw new Error('返回异常')
+      throw new Error('异常数值')
     }
   } catch (e) {
     console.error('AI estimation failed:', e)
@@ -180,40 +211,46 @@ async function handleAiEstimate() {
   }
 }
 
-async function mockAiCalorieApi(description: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockValues: Record<string, number> = {
-        '米饭': 116,
-        '面包': 250,
-        '牛奶': 54,
-        '鸡蛋': 143,
-        '西兰花': 34,
-        '苹果': 52,
-        '香蕉': 91,
-      }
-      
-      let total = 0
-      let count = 0
-      for (const [key, value] of Object.entries(mockValues)) {
-        if (description.includes(key)) {
-          total += value
-          count++
-        }
-      }
-      
-      if (count > 0) {
-        resolve(total)
-      } else {
-        resolve(Math.floor(Math.random() * 500) + 50)
-      }
-    }, 1500)
-  })
-}
+async function handleSave() {
+  const name = formData.value.name.trim()
+  const calories = Number(formData.value.calories)
+  
+  if (!name) {
+    uni.showToast({ title: '请输入食物名称', icon: 'none' })
+    return
+  }
+  
+  if (!calories || calories <= 0) {
+    uni.showToast({ title: '请输入热量数值', icon: 'none' })
+    return
+  }
 
-function handleSave() {
-  console.log('Save clicked, mode:', mode.value, 'data:', formData.value)
-  uni.navigateBack()
+  try {
+    const pages = getCurrentPages()
+    const prevPage = pages[pages.length - 2]
+    const mealType = (prevPage as any).$page?.route?.split('/').pop()?.replace('index', '') as MealType || 'dinner'
+    
+    const today = new Date()
+    const recordDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    await addDietRecord({
+      recordDate,
+      mealType,
+      items: [{
+        foodName: name,
+        foodDesc: formData.value.description.trim() || undefined,
+        weight: Number(formData.value.weight) || 0,
+        calories,
+        remark: formData.value.remark.trim() || undefined,
+      }],
+    })
+
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    uni.navigateBack()
+  } catch (e) {
+    console.error('Save failed:', e)
+    uni.showToast({ title: '保存失败', icon: 'none' })
+  }
 }
 
 onMounted(() => {
@@ -231,7 +268,9 @@ onMounted(() => {
         formData.value = {
           name: foodItem.name,
           description: foodItem.description || '',
+          weight: String(foodItem.weight || ''),
           calories: String(foodItem.calories),
+          remark: foodItem.remark || '',
         }
       } catch (e) {
         console.error('Parse food item error:', e)
@@ -269,12 +308,11 @@ onMounted(() => {
 }
 
 .form-scroll {
-  height: calc(100vh - 280rpx);
-  padding: 32rpx;
+  height: calc(100vh - 160rpx);
 }
 
 .form-content {
-  padding-right: 8rpx;
+  padding: 32rpx;
 }
 
 .image-upload-area {
@@ -287,112 +325,120 @@ onMounted(() => {
 }
 
 .form-item {
-  margin-bottom: 28rpx;
+  margin-bottom: 32rpx;
 }
 
 .form-label {
+  display: block;
   font-size: 28rpx;
   color: #FF69B4;
   font-weight: 500;
   margin-bottom: 16rpx;
-  display: block;
 }
 
 .form-input {
   width: 100%;
-  padding: 24rpx;
+  height: 88rpx;
+  padding: 0 24rpx;
   background: #FFFFFF;
-  border-radius: 28rpx;
-  border: 2rpx solid rgba(255, 182, 193, 0.4);
+  border: 2rpx solid #FFB6C1;
+  border-radius: 24rpx;
   font-size: 30rpx;
-  color: #555555;
-  box-shadow: 0 4rpx 12rpx rgba(255, 182, 193, 0.08);
+  color: #333;
+  box-sizing: border-box;
+}
+
+.form-placeholder {
+  color: #CCC;
 }
 
 .form-textarea {
   width: 100%;
+  height: 200rpx;
   padding: 24rpx;
   background: #FFFFFF;
-  border-radius: 28rpx;
-  border: 2rpx solid rgba(255, 182, 193, 0.4);
+  border: 2rpx solid #FFB6C1;
+  border-radius: 24rpx;
   font-size: 30rpx;
-  color: #555555;
-  height: 200rpx;
-  box-shadow: 0 4rpx 12rpx rgba(255, 182, 193, 0.08);
+  color: #333;
+  box-sizing: border-box;
 }
 
-.form-placeholder {
-  color: #B8B8B8;
+.weight-input-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.weight-input {
+  flex: 1;
+}
+
+.weight-unit {
+  margin-left: -60rpx;
+  font-size: 28rpx;
+  color: #FF69B4;
+  font-weight: 500;
 }
 
 .calorie-row {
   display: flex;
-  gap: 20rpx;
+  gap: 24rpx;
 }
 
 .calorie-input-wrap {
   flex: 1;
   display: flex;
   align-items: center;
-  background: #FFFFFF;
-  border-radius: 28rpx;
-  border: 2rpx solid rgba(255, 182, 193, 0.4);
-  box-shadow: 0 4rpx 12rpx rgba(255, 182, 193, 0.08);
-  padding: 0 24rpx;
 }
 
 .calorie-input {
   flex: 1;
-  border: none;
-  background: transparent;
-  padding: 24rpx 0;
-  font-size: 30rpx;
-  color: #555555;
 }
 
 .calorie-unit {
+  margin-left: -60rpx;
   font-size: 28rpx;
   color: #FF69B4;
   font-weight: 500;
 }
 
-.calorie-hint {
-  font-size: 24rpx;
-  color: rgba(255, 105, 180, 0.6);
-  margin-top: 12rpx;
-  display: block;
-}
-
 .ai-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20rpx 28rpx;
+  gap: 12rpx;
+  padding: 20rpx 32rpx;
   background: linear-gradient(135deg, #FF69B4 0%, #FFB6C1 100%);
-  border-radius: 28rpx;
-  box-shadow: 0 8rpx 20rpx rgba(255, 105, 180, 0.25);
-  min-width: 200rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 105, 180, 0.3);
+  transition: transform 0.2s;
+}
+
+.ai-btn:active {
+  transform: scale(0.95);
 }
 
 .ai-btn-disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  background: #E8E8E8;
+  background: #DDD;
   box-shadow: none;
+  opacity: 0.6;
 }
 
 .ai-btn-icon {
-  width: 56rpx;
-  height: 56rpx;
-  margin-bottom: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .ai-btn-text {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #FFFFFF;
   font-weight: 500;
-  white-space: nowrap;
+}
+
+.calorie-hint {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #FFB6C1;
 }
 
 .bottom-btn-wrap {
@@ -403,22 +449,28 @@ onMounted(() => {
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   background: rgba(255, 249, 250, 0.95);
-  backdrop-filter: blur(20rpx);
+  backdrop-filter: blur(10px);
 }
 
 .save-btn {
-  padding: 28rpx;
+  height: 96rpx;
   background: linear-gradient(135deg, #FF69B4 0%, #FFB6C1 100%);
-  border-radius: 32rpx;
-  box-shadow: 0 8rpx 20rpx rgba(255, 105, 180, 0.25);
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 105, 180, 0.3);
+  transition: transform 0.2s;
+}
+
+.save-btn:active {
+  transform: scale(0.98);
 }
 
 .save-text {
   font-size: 32rpx;
   color: #FFFFFF;
   font-weight: 600;
-  text-align: center;
-  display: block;
 }
 
 .loading-overlay {
@@ -431,19 +483,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 1000;
 }
 
 .loading-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24rpx;
 }
 
 .loading-cat {
   width: 160rpx;
   height: 160rpx;
+  margin-bottom: 24rpx;
 }
 
 .loading-text {

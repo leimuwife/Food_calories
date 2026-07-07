@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { searchFood, getFoodDetail, addDietRecord, getFoodCategories } from '@/api'
+import { searchFood, getFoodDetail, addDietRecord, getFoodCategories } from '@/api/add/add'
 import { getToday, MEAL_OPTIONS } from '@/utils'
 import FoodCard from '@/components/FoodCard.vue'
 import EmptyState from '@/components/EmptyState.vue'

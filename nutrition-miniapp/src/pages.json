@@ -38,14 +38,6 @@
       }
     },
     {
-      "path": "pages/history/index",
-      "style": {
-        "navigationBarTitleText": "历史记录",
-        "navigationBarBackgroundColor": "#FF69B4",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "个人中心",
@@ -158,6 +150,20 @@
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "小张营养师"
+      }
+    },
+    {
+      "path": "pages/history/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "饮食历史记录"
+      }
+    },
+    {
+      "path": "pages/history/detail",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "饮食记录详情"
       }
     }
   ],

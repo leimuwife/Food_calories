@@ -115,10 +115,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { publishFeed, uploadAttachment } from '@/api'
+import { publishFeed } from '@/api/qingyouquan/qingyouquan'
+import { uploadAttachment } from '@/api'
 
 interface UploadedImage {
-  fileId: number
+  fileId: string
   url: string
 }
 
@@ -150,7 +151,7 @@ function chooseImage() {
           const result: any = await uploadAttachment(filePath)
           if (result && result.id) {
             uploadedImages.value.push({
-              fileId: result.id,
+              fileId: String(result.id),
               url: filePath
             })
           }

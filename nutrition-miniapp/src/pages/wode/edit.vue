@@ -130,13 +130,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { updateProfile, uploadAttachment, getAttachmentUrl } from '@/api'
+import { updateProfile } from '@/api/wode/wode'
+import { uploadAttachment, getAttachmentUrl } from '@/api'
 
 const userStore = useUserStore()
 const nickname = ref('')
 const email = ref('')
 const feedback = ref('')
-const avatarFileId = ref<number | null>(null)
+const avatarFileId = ref<string | null>(null)
 const tempAvatarUrl = ref('')
 const isUploading = ref(false)
 
@@ -159,7 +160,7 @@ const avatarUrl = computed(() => {
       firstId = parts[0].trim()
     }
   }
-  return firstId ? getAttachmentUrl(Number(firstId)) : getDefaultAvatar()
+  return firstId ? getAttachmentUrl(firstId) : getDefaultAvatar()
 })
 
 function getDefaultAvatar(): string {
@@ -186,7 +187,7 @@ function chooseAvatar() {
       try {
         const result: any = await uploadAttachment(filePath)
         if (result && result.id) {
-          avatarFileId.value = result.id
+          avatarFileId.value = String(result.id)
           tempAvatarUrl.value = filePath
           uni.showToast({ title: '头像上传成功', icon: 'success' })
         }

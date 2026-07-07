@@ -2,7 +2,7 @@
   <view class="page-container">
     <view class="header-area">
       <view class="avatar-section">
-        <image src="/static/images/AI/小张营养师.png" class="nutritionist-avatar" mode="aspectFill"/>
+        <image src="/static/AI/nutritionist.png" class="nutritionist-avatar" mode="aspectFill"/>
         <text class="nutritionist-name">小张营养师</text>
         <text class="nutritionist-desc">专业营养咨询，为您的健康保驾护航</text>
       </view>
@@ -19,7 +19,7 @@
         <view :class="['message-content', { 'message-user': msg.role === 'user', 'message-ai': msg.role === 'assistant' }]">
           <image 
             v-if="msg.role === 'assistant'" 
-            src="/static/images/AI/小张营养师.png" 
+            src="/static/AI/nutritionist.png" 
             class="msg-avatar" 
             mode="aspectFill"
           />
@@ -47,7 +47,7 @@
 
       <view v-if="isLoading" class="loading-item">
         <view class="loading-content">
-          <image src="/static/images/AI/小张营养师.png" class="loading-avatar" mode="aspectFill"/>
+          <image src="/static/AI/nutritionist.png" class="loading-avatar" mode="aspectFill"/>
           <view class="loading-dots">
             <view class="dot"></view>
             <view class="dot"></view>
@@ -56,6 +56,10 @@
         </view>
       </view>
     </scroll-view>
+
+    <view class="disclaimer">
+      <text class="disclaimer-text">⚠️ 答案由AI生成，仅供参考，不构成医疗建议</text>
+    </view>
 
     <view class="input-area">
       <view class="image-preview">
@@ -105,18 +109,19 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { uploadAttachment, nutritionistChat, getAttachmentUrl } from '@/api'
+import { nutritionistChat } from '@/api/yingyangshi/yingyangshi'
+import { uploadAttachment, getAttachmentUrl } from '@/api'
 import type { ChatMessage } from '@/api/types'
 
 const userStore = useUserStore()
 const chatMessages = ref<ChatMessage[]>([])
 const inputContent = ref('')
-const selectedImages = ref<{ fileId: number; url: string }[]>([])
+const selectedImages = ref<{ fileId: string; url: string }[]>([])
 const isLoading = ref(false)
 const scrollToId = ref('')
 
 interface SelectedImage {
-  fileId: number
+  fileId: string
   url: string
 }
 
@@ -140,7 +145,7 @@ const userAvatar = computed(() => {
       firstId = parts[0].trim()
     }
   }
-  return firstId ? getAttachmentUrl(Number(firstId)) : getDefaultAvatar()
+  return firstId ? getAttachmentUrl(String(firstId)) : getDefaultAvatar()
 })
 
 function getDefaultAvatar(): string {
@@ -170,7 +175,7 @@ async function chooseImage() {
           const result: any = await uploadAttachment(filePath)
           if (result && result.id) {
             selectedImages.value.push({
-              fileId: result.id,
+              fileId: String(result.id),
               url: filePath
             })
           }
@@ -455,6 +460,18 @@ $card-bg: #FFFFFF;
 @keyframes dotPulse {
   0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
   40% { transform: scale(1); opacity: 1; }
+}
+
+.disclaimer {
+  text-align: center;
+  padding: 16rpx 24rpx;
+  background: rgba(255, 215, 0, 0.1);
+  border-top: 1rpx solid rgba(255, 215, 0, 0.3);
+}
+
+.disclaimer-text {
+  font-size: 22rpx;
+  color: #FF8C00;
 }
 
 .input-area {

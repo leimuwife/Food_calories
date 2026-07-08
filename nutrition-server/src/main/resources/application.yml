@@ -64,6 +64,14 @@ jwt:
   secret: ${JWT_SECRET:NutritionAssistantJwtSecretKey2024MustBeAtLeast256BitsLong!!}
   expiration: 604800000
 
+aliyun:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${OSS_ACCESS_KEY_ID}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+    bucket-name: nutrition-file-202607
+    domain:
+
 logging:
   level:
     com.nutrition: debug

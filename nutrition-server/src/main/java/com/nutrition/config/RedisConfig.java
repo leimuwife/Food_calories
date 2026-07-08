@@ -24,12 +24,25 @@ import java.util.Map;
 @Configuration
 public class RedisConfig {
 
+    /**
+     * 创建缓存配置属性对象
+     * 从配置文件读取 spring.cache.redis.custom-cache-config 下的配置
+     *
+     * @return CacheConfigProperties 缓存配置属性对象
+     */
     @Bean
     @ConfigurationProperties(prefix = "spring.cache.redis.custom-cache-config")
     public CacheConfigProperties cacheConfigProperties() {
         return new CacheConfigProperties();
     }
 
+    /**
+     * 创建RedisTemplate Bean
+     * 配置字符串序列化器和JSON序列化器，支持对象的序列化和反序列化
+     *
+     * @param connectionFactory Redis连接工厂
+     * @return RedisTemplate<String, Object> Redis模板对象
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -47,6 +60,14 @@ public class RedisConfig {
         return template;
     }
 
+    /**
+     * 创建RedisCacheManager Bean
+     * 支持按缓存名配置不同的过期时间，默认过期时间为30分钟
+     *
+     * @param connectionFactory      Redis连接工厂
+     * @param cacheConfigProperties 缓存配置属性对象
+     * @return RedisCacheManager Redis缓存管理器
+     */
     @Bean
     @Primary
     public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory,
@@ -81,6 +102,9 @@ public class RedisConfig {
      * 解析Spring风格的时长字符串
      * 支持格式：30s, 1m, 30m, 1h, 7d
      * 也支持ISO-8601格式：PT30M, PT1H, P7D
+     *
+     * @param ttl 时长字符串
+     * @return Duration 解析后的时长对象
      */
     private Duration parseTtl(String ttl) {
         if (ttl == null || ttl.isBlank()) {
@@ -106,13 +130,36 @@ public class RedisConfig {
         }
     }
 
+    /**
+     * 缓存配置属性类
+     * 包含user、diet、blacklist三个缓存区域的配置
+     */
     @Data
     public static class CacheConfigProperties {
         private CacheItem user;
         private CacheItem diet;
         private CacheItem blacklist;
+
+        /**
+         * 根据缓存名称获取对应的TTL配置
+         *
+         * @param name 缓存名称
+         * @return TTL字符串，如 "30m"、"1h"
+         */
+        public String getConfig(String name) {
+            CacheItem item = switch (name) {
+                case "user" -> user;
+                case "diet" -> diet;
+                case "blacklist" -> blacklist;
+                default -> null;
+            };
+            return item != null ? item.getTtl() : null;
+        }
     }
 
+    /**
+     * 单个缓存项配置类
+     */
     @Data
     public static class CacheItem {
         private String ttl;

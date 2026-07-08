@@ -31,6 +31,7 @@ public class JwtAuthFilter implements Filter {
             "/api/auth/register",
             "/api/auth/wx-login",
             "/api/auth/logout",
+            "/api/attachment/",
     };
 
     @Override

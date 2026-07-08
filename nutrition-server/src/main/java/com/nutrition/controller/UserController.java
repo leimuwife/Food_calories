@@ -1,7 +1,6 @@
 package com.nutrition.controller;
 
 import com.nutrition.common.Result;
-import com.nutrition.entity.SysUser;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.service.UserService;
 import com.nutrition.vo.UserVO;

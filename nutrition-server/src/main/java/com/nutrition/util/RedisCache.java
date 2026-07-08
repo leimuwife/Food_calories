@@ -1,52 +1,100 @@
 package com.nutrition.util;
 
 import com.nutrition.config.RedisConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Redis缓存工具类
- * 提供通用的缓存操作方法，支持String类型和Object类型
- * 支持从配置文件读取各缓存区域的过期时间
+ * 提供通用的缓存操作方法，使用StringRedisTemplate手动序列化
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class RedisCache {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
     private final RedisConfig.CacheConfigProperties cacheConfigProperties;
+
+    public static final String PREFIX_BLACKLIST = "blacklist:";
+    public static final String PREFIX_USER = "user:";
+    public static final String PREFIX_DIET = "diet:";
+    public static final String PREFIX_FOOD = "food:";
+
+    /**
+     * 构建黑名单缓存键
+     *
+     * @param token 令牌
+     * @return 缓存键
+     */
+    public static String getBlacklistKey(String token) {
+        return PREFIX_BLACKLIST + token;
+    }
+
+    /**
+     * 构建用户缓存键
+     *
+     * @param userId 用户ID
+     * @return 缓存键
+     */
+    public static String getUserKey(Long userId) {
+        return PREFIX_USER + userId;
+    }
+
+    /**
+     * 构建饮食记录缓存键
+     *
+     * @param userId 用户ID
+     * @param date   日期
+     * @return 缓存键
+     */
+    public static String getDietKey(Long userId, String date) {
+        return PREFIX_DIET + userId + ":" + date;
+    }
+
+    /**
+     * 构建食物缓存键
+     *
+     * @param keyword 关键词
+     * @return 缓存键
+     */
+    public static String getFoodKey(String keyword) {
+        return PREFIX_FOOD + keyword;
+    }
 
     /**
      * 设置缓存（带过期时间）
      *
      * @param key     缓存键
-     * @param value   缓存值
+     * @param value   缓存值（对象）
      * @param timeout 过期时间
      * @param unit    时间单位
      */
     public void set(String key, Object value, long timeout, TimeUnit unit) {
         try {
-            redisTemplate.opsForValue().set(key, value, timeout, unit);
+            String json = objectMapper.writeValueAsString(value);
+            stringRedisTemplate.opsForValue().set(key, json, timeout, unit);
         } catch (Exception e) {
             log.warn("Redis设置缓存失败: key={}, error={}", key, e.getMessage());
         }
     }
 
     /**
-     * 设置缓存（永久有效）
+     * 设置缓存（不带过期时间）
      *
      * @param key   缓存键
-     * @param value 缓存值
+     * @param value 缓存值（对象）
      */
     public void set(String key, Object value) {
         try {
-            redisTemplate.opsForValue().set(key, value);
+            String json = objectMapper.writeValueAsString(value);
+            stringRedisTemplate.opsForValue().set(key, json);
         } catch (Exception e) {
             log.warn("Redis设置缓存失败: key={}, error={}", key, e.getMessage());
         }
@@ -55,32 +103,18 @@ public class RedisCache {
     /**
      * 获取缓存
      *
-     * @param key 缓存键
-     * @return 缓存值，不存在返回null
+     * @param key   缓存键
+     * @param clazz 返回值类型
+     * @param <T>   返回值泛型
+     * @return 缓存对象，不存在返回null
      */
-    @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> clazz) {
         try {
-            Object value = redisTemplate.opsForValue().get(key);
-            if (value == null) {
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json == null || json.isEmpty()) {
                 return null;
             }
-            return (T) value;
-        } catch (Exception e) {
-            log.warn("Redis获取缓存失败: key={}, error={}", key, e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * 获取缓存（通用Object类型）
-     *
-     * @param key 缓存键
-     * @return 缓存值，不存在返回null
-     */
-    public Object get(String key) {
-        try {
-            return redisTemplate.opsForValue().get(key);
+            return objectMapper.readValue(json, clazz);
         } catch (Exception e) {
             log.warn("Redis获取缓存失败: key={}, error={}", key, e.getMessage());
             return null;
@@ -94,7 +128,7 @@ public class RedisCache {
      */
     public void delete(String key) {
         try {
-            redisTemplate.delete(key);
+            stringRedisTemplate.delete(key);
         } catch (Exception e) {
             log.warn("Redis删除缓存失败: key={}, error={}", key, e.getMessage());
         }
@@ -108,15 +142,15 @@ public class RedisCache {
      */
     public boolean exists(String key) {
         try {
-            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
         } catch (Exception e) {
-            log.warn("Redis检查缓存失败: key={}, error={}", key, e.getMessage());
+            log.warn("Redis检查缓存存在失败: key={}, error={}", key, e.getMessage());
             return false;
         }
     }
 
     /**
-     * 设置过期时间
+     * 设置缓存过期时间
      *
      * @param key     缓存键
      * @param timeout 过期时间
@@ -124,119 +158,98 @@ public class RedisCache {
      */
     public void expire(String key, long timeout, TimeUnit unit) {
         try {
-            redisTemplate.expire(key, timeout, unit);
+            stringRedisTemplate.expire(key, timeout, unit);
         } catch (Exception e) {
             log.warn("Redis设置过期时间失败: key={}, error={}", key, e.getMessage());
         }
     }
 
     /**
-     * 缓存键前缀常量
+     * 设置字符串缓存（带过期时间）
+     *
+     * @param key     缓存键
+     * @param value   缓存值（字符串）
+     * @param timeout 过期时间
+     * @param unit    时间单位
      */
-    public static final String PREFIX_BLACKLIST = "blacklist:";
-    public static final String PREFIX_USER = "user:";
-    public static final String PREFIX_DIET = "diet:";
-    public static final String PREFIX_FEED = "feed:";
-    public static final String PREFIX_CHECKIN = "checkin:";
-
-    /**
-     * 生成Token黑名单键
-     */
-    public static String getBlacklistKey(String token) {
-        return PREFIX_BLACKLIST + token;
+    public void setString(String key, String value, long timeout, TimeUnit unit) {
+        try {
+            stringRedisTemplate.opsForValue().set(key, value, timeout, unit);
+        } catch (Exception e) {
+            log.warn("Redis设置字符串缓存失败: key={}, error={}", key, e.getMessage());
+        }
     }
 
     /**
-     * 生成用户信息键
+     * 获取字符串缓存
+     *
+     * @param key 缓存键
+     * @return 字符串值，不存在返回null
      */
-    public static String getUserKey(Long userId) {
-        return PREFIX_USER + userId;
+    public String getString(String key) {
+        try {
+            return stringRedisTemplate.opsForValue().get(key);
+        } catch (Exception e) {
+            log.warn("Redis获取字符串缓存失败: key={}, error={}", key, e.getMessage());
+            return null;
+        }
     }
 
     /**
-     * 生成用户信息键（字符串ID）
-     */
-    public static String getUserKey(String userId) {
-        return PREFIX_USER + userId;
-    }
-
-    /**
-     * 生成每日饮食统计键
-     */
-    public static String getDietKey(Long userId, String date) {
-        return PREFIX_DIET + userId + ":" + date;
-    }
-
-    /**
-     * 生成轻友圈列表键
-     */
-    public static String getFeedKey(int page) {
-        return PREFIX_FEED + "list:page:" + page;
-    }
-
-    /**
-     * 生成打卡状态键
-     */
-    public static String getCheckinKey(Long userId, int year, int month) {
-        return PREFIX_CHECKIN + userId + ":" + year + ":" + month;
-    }
-
-    /**
-     * 获取用户信息缓存过期时间（秒）
+     * 获取用户缓存过期时间（秒）
+     *
+     * @return 过期时间（秒）
      */
     public long getUserCacheTtlSeconds() {
-        if (cacheConfigProperties.getUser() != null) {
-            return parseTtl(cacheConfigProperties.getUser().getTtl()).getSeconds();
-        }
-        return Duration.ofMinutes(30).getSeconds();
+        String ttl = cacheConfigProperties.getConfig("user");
+        return parseTtlSeconds(ttl, 30 * 60);
     }
 
     /**
-     * 获取每日饮食缓存过期时间（秒）
+     * 获取饮食记录缓存过期时间（秒）
+     *
+     * @return 过期时间（秒）
      */
     public long getDietCacheTtlSeconds() {
-        if (cacheConfigProperties.getDiet() != null) {
-            return parseTtl(cacheConfigProperties.getDiet().getTtl()).getSeconds();
-        }
-        return Duration.ofMinutes(30).getSeconds();
+        String ttl = cacheConfigProperties.getConfig("diet");
+        return parseTtlSeconds(ttl, 30 * 60);
     }
 
     /**
      * 获取黑名单缓存过期时间（秒）
+     *
+     * @return 过期时间（秒）
      */
     public long getBlacklistCacheTtlSeconds() {
-        if (cacheConfigProperties.getBlacklist() != null) {
-            return parseTtl(cacheConfigProperties.getBlacklist().getTtl()).getSeconds();
-        }
-        return Duration.ofDays(7).getSeconds();
+        String ttl = cacheConfigProperties.getConfig("blacklist");
+        return parseTtlSeconds(ttl, 7 * 24 * 60 * 60);
     }
 
     /**
-     * 解析Spring风格的时长字符串
+     * 解析TTL字符串为秒数
      * 支持格式：30s, 1m, 30m, 1h, 7d
-     * 也支持ISO-8601格式：PT30M, PT1H, P7D
+     *
+     * @param ttl           TTL字符串
+     * @param defaultSeconds 默认秒数
+     * @return 解析后的秒数
      */
-    private Duration parseTtl(String ttl) {
+    private long parseTtlSeconds(String ttl, long defaultSeconds) {
         if (ttl == null || ttl.isBlank()) {
-            return Duration.ofMinutes(30);
+            return defaultSeconds;
         }
         ttl = ttl.trim().toLowerCase();
         try {
             char unit = ttl.charAt(ttl.length() - 1);
             long value = Long.parseLong(ttl.substring(0, ttl.length() - 1));
             return switch (unit) {
-                case 's' -> Duration.ofSeconds(value);
-                case 'm' -> Duration.ofMinutes(value);
-                case 'h' -> Duration.ofHours(value);
-                case 'd' -> Duration.ofDays(value);
-                default -> Duration.parse(ttl);
+                case 's' -> value;
+                case 'm' -> value * 60;
+                case 'h' -> value * 60 * 60;
+                case 'd' -> value * 24 * 60 * 60;
+                default -> defaultSeconds;
             };
         } catch (Exception e) {
-            try {
-                return Duration.parse(ttl);
-            } catch (Exception ex) {
-                return Duration.ofMinutes(30);
-            }
+            return defaultSeconds;
         }
     }
 }

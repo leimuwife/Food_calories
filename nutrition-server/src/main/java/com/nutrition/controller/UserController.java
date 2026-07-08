@@ -20,12 +20,11 @@ public class UserController {
 
     private final UserService userService;
 
-    /** 获取当前用户信息 */
+    /** 获取当前用户信息（带缓存） */
     @GetMapping("/profile")
     public Result<UserVO> getProfile(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        SysUser user = userService.getCurrentUser(userId);
-        UserVO vo = userService.convertToVO(user);
+        UserVO vo = ((com.nutrition.service.impl.UserServiceImpl) userService).getUserVO(userId);
         return Result.ok(vo);
     }
 

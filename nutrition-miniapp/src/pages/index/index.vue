@@ -218,7 +218,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getTodayRecords, getDailySummary, searchFood } from '@/api/shouye'
+import { getTodayRecords, searchFood } from '@/api/shouye'
 import { getToday } from '@/utils'
 
 const userStore = useUserStore()
@@ -258,30 +258,45 @@ const mealTypeMap: Record<string, string> = {
 
 async function loadTodayData() {
   const today = getToday()
+  console.log('请求日期:', today)
   try {
-    const [recordsRes, summaryRes] = await Promise.all([
-      getTodayRecords(today),
-      getDailySummary(today),
-    ])
+    const recordsRes = await getTodayRecords(today)
+    console.log('接口返回数据:', JSON.stringify(recordsRes, null, 2))
+    console.log('recordsRes.data类型:', typeof recordsRes.data)
+    console.log('recordsRes.data:', recordsRes.data)
 
-    todayCalories.value = summaryRes.data.totalCalories || 0
+    todayCalories.value = Number(recordsRes.data.totalCalories) || 0
+    console.log('今日总热量:', todayCalories.value)
 
-    const records = recordsRes.data.records || []
+    const recordsData = recordsRes.data
+    const records = Array.isArray(recordsData.records) ? recordsData.records : []
+    console.log('records数组长度:', records.length)
+    console.log('records:', records)
+    
     const items: FoodListItem[] = []
 
     records.forEach((record) => {
-      const mealTypeText = mealTypeMap[record.mealType] || record.mealType
-      record.items.forEach((item) => {
+      console.log('record:', record)
+      console.log('record.items类型:', typeof record.items)
+      console.log('record.items是否数组:', Array.isArray(record.items))
+      
+      const mealTypeText = mealTypeMap[record.mealType] || record.mealTypeName || record.mealType
+      const recordItems = Array.isArray(record.items) ? record.items : []
+      
+      recordItems.forEach((item) => {
+        console.log('item:', item)
         items.push({
-          id: item.id,
+          id: Number(item.id),
           name: item.foodName,
           mealType: record.mealType,
           mealTypeText,
-          calories: item.calories,
+          calories: Number(item.calories),
         })
       })
     })
 
+    console.log('转换后的foodList:', items)
+    console.log('foodList长度:', items.length)
     foodList.value = items
   } catch (e) {
     console.error('加载今日数据失败:', e)
@@ -341,7 +356,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .page-container {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(180deg, #FFF9FA 0%, #FFF5F7 100%);
   padding: 24rpx;
   padding-bottom: 140rpx;
@@ -528,15 +545,19 @@ onMounted(() => {
 }
 
 .food-list-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background: #FFFFFF;
   border-radius: 40rpx;
   padding: 32rpx;
   box-shadow: 0 8rpx 24rpx rgba(255, 105, 180, 0.1);
   border: 2rpx solid rgba(255, 182, 193, 0.3);
+  overflow: hidden;
 }
 
 .food-scroll {
-  height: 480rpx;
+  flex: 1;
   margin-top: 16rpx;
 }
 

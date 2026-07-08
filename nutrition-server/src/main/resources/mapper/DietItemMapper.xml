@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nutrition.mapper.DietItemMapper">
+
+    <select id="selectByRecordId" resultType="com.nutrition.entity.DietItem">
+        SELECT id, record_id, food_name, food_desc, weight, calories, remark, file_ids, create_time, update_time, delete_flag
+        FROM diet_item
+        WHERE record_id = #{recordId}
+          AND delete_flag = 0
+        ORDER BY create_time
+    </select>
+
+    <select id="selectByRecordIds" resultType="com.nutrition.entity.DietItem">
+        SELECT id, record_id, food_name, food_desc, weight, calories, remark, file_ids, create_time, update_time, delete_flag
+        FROM diet_item
+        WHERE record_id IN
+        <foreach collection="recordIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND delete_flag = 0
+        ORDER BY record_id, create_time
+    </select>
+
+    <select id="sumCaloriesByRecordId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(calories), 0)
+        FROM diet_item
+        WHERE record_id = #{recordId}
+          AND delete_flag = 0
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO diet_item (id, record_id, food_name, food_desc, weight, calories, remark, file_ids, create_time, update_time, delete_flag)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.id}, #{item.recordId}, #{item.foodName}, #{item.foodDesc}, #{item.weight}, #{item.calories}, #{item.remark}, #{item.fileIds}, #{item.createTime}, #{item.updateTime}, #{item.deleteFlag})
+        </foreach>
+    </insert>
+
+</mapper>

@@ -45,7 +45,7 @@ function request<T = unknown>(options: RequestOptions): Promise<ApiResponse<T>> 
         const statusCode = res.statusCode
         const responseData = res.data as ApiResponse<T>
 
-        if (statusCode === 200 && responseData.code === 200) {
+        if (statusCode === 200 && String(responseData.code) === '200') {
           resolve(responseData)
         } else if (statusCode === 401) {
           userStore.logout()

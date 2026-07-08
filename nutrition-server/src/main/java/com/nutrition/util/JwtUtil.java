@@ -60,6 +60,17 @@ public class JwtUtil {
         }
     }
 
+    /** 获取Token过期时间（毫秒） */
+    public long getExpirationTime(String token) {
+        Claims claims = parseToken(token);
+        return claims.getExpiration().getTime();
+    }
+
+    /** 获取Token有效期（毫秒） */
+    public long getExpiration() {
+        return expiration;
+    }
+
     private Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

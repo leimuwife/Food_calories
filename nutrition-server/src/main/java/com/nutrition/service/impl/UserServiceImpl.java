@@ -11,23 +11,32 @@ import com.nutrition.entity.SysUser;
 import com.nutrition.mapper.SysUserMapper;
 import com.nutrition.service.UserService;
 import com.nutrition.util.JwtUtil;
+import com.nutrition.util.RedisCache;
 import com.nutrition.vo.LoginResultVO;
 import com.nutrition.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * 用户业务层实现类
  * 负责用户注册、登录、个人信息管理等功能
+ * 支持Redis缓存用户信息，减少数据库查询
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements UserService {
+
+    
 
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RedisCache redisCache;
 
     @Override
     public LoginResultVO login(LoginParam param) {
@@ -43,7 +52,11 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         String token = jwtUtil.generateToken(String.valueOf(user.getId()), user.getUsername());
         LoginResultVO result = new LoginResultVO();
         result.setToken(token);
-        result.setUser(convertToVO(user));
+        UserVO userVO = convertToVO(user);
+        result.setUser(userVO);
+
+        cacheUser(user.getId(), userVO);
+
         return result;
     }
 
@@ -66,7 +79,11 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         String token = jwtUtil.generateToken(String.valueOf(user.getId()), user.getUsername());
         LoginResultVO result = new LoginResultVO();
         result.setToken(token);
-        result.setUser(convertToVO(user));
+        UserVO userVO = convertToVO(user);
+        result.setUser(userVO);
+
+        cacheUser(user.getId(), userVO);
+
         return result;
     }
 
@@ -85,7 +102,11 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
                 StrUtil.blankToDefault(user.getUsername(), "wx_user"));
         LoginResultVO result = new LoginResultVO();
         result.setToken(token);
-        result.setUser(convertToVO(user));
+        UserVO userVO = convertToVO(user);
+        result.setUser(userVO);
+
+        cacheUser(user.getId(), userVO);
+
         return result;
     }
 
@@ -129,7 +150,29 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         return user;
     }
 
+    /**
+     * 获取用户信息（带缓存）
+     *
+     * @param userId 用户ID
+     * @return 用户VO对象
+     */
+    public UserVO getUserVO(Long userId) {
+        String cacheKey = RedisCache.getUserKey(userId);
+        UserVO cachedVO = redisCache.get(cacheKey, UserVO.class);
+        if (cachedVO != null) {
+            log.debug("用户{}信息命中缓存", userId);
+            return cachedVO;
+        }
+
+        SysUser user = getCurrentUser(userId);
+        UserVO userVO = convertToVO(user);
+        cacheUser(userId, userVO);
+
+        return userVO;
+    }
+
     @Override
+    @Transactional
     public void updateProfile(Long userId, ProfileUpdateParam updateInfo) {
         SysUser user = this.getById(userId);
         if (user == null) throw new BusinessException(404, "用户不存在");
@@ -141,6 +184,9 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
             user.setEmail(updateInfo.getEmail());
         }
         this.updateById(user);
+
+        clearUserCache(userId);
+        log.debug("用户{}信息已更新，缓存已清除", userId);
     }
 
     @Override
@@ -151,5 +197,23 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         vo.setNickname(user.getNickname());
         vo.setEmail(user.getEmail());
         return vo;
+    }
+
+    /**
+     * 缓存用户信息
+     */
+    private void cacheUser(Long userId, UserVO userVO) {
+        String cacheKey = RedisCache.getUserKey(userId);
+        long ttlSeconds = redisCache.getUserCacheTtlSeconds();
+        redisCache.set(cacheKey, userVO, ttlSeconds, TimeUnit.SECONDS);
+        log.debug("用户{}信息已缓存，TTL={}秒", userId, ttlSeconds);
+    }
+
+    /**
+     * 清除用户信息缓存
+     */
+    private void clearUserCache(Long userId) {
+        String cacheKey = RedisCache.getUserKey(userId);
+        redisCache.delete(cacheKey);
     }
 }

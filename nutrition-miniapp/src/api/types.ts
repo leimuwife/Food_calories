@@ -1,3 +1,16 @@
+export interface FoodVO {
+  id: number
+  foodName: string
+  category: string
+  caloriesPer100g: number
+  proteinPer100g: number
+  fatPer100g: number
+  carbsPer100g: number
+  fiberPer100g: number
+  ediblePortion: number
+  dataSource: string
+}
+
 export interface UserVO {
   id: number
   openid: string
@@ -30,19 +43,22 @@ export const MealTypeNameMap: Record<MealType, string> = {
 }
 
 export interface DietItemVO {
-  id: number
-  recordId: number
+  id: number | string
+  recordId: number | string
   foodName: string
   foodDesc?: string
-  weight: number
-  calories: number
+  weight: number | string
+  calories: number | string
   remark?: string
+  imageUrls?: string[]
 }
 
 export interface DietRecordVO {
-  id: number
+  id: number | string
   recordDate: string
-  mealType: MealType
+  mealType: MealType | string
+  mealTypeName?: string
+  totalCalories?: number | string
   items: DietItemVO[]
 }
 
@@ -57,8 +73,14 @@ export interface DailySummaryVO {
 }
 
 export interface DailyDietVO {
+  totalCalories: number | string
+  breakfastCalories: number | string
+  lunchCalories: number | string
+  dinnerCalories: number | string
+  snackCalories: number | string
   records: DietRecordVO[]
-  summary: DailySummaryVO
+  foodList?: DietItemVO[]
+  summary?: DailySummaryVO
 }
 
 export interface MonthlySummaryVO {

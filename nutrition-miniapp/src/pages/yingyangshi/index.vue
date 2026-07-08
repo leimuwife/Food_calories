@@ -172,7 +172,7 @@ async function chooseImage() {
 
       try {
         for (const filePath of tempFilePaths) {
-          const result: any = await uploadAttachment(filePath)
+          const result: any = await uploadAttachment(filePath, 'chat/')
           if (result && result.id) {
             selectedImages.value.push({
               fileId: String(result.id),

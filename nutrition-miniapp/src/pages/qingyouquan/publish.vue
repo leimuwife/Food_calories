@@ -148,7 +148,7 @@ function chooseImage() {
 
       try {
         for (const filePath of tempFilePaths) {
-          const result: any = await uploadAttachment(filePath)
+          const result: any = await uploadAttachment(filePath, 'feed/')
           if (result && result.id) {
             uploadedImages.value.push({
               fileId: String(result.id),

@@ -27,7 +27,8 @@
       <view v-if="foodList.length > 0" class="food-list">
         <view v-for="item in foodList" :key="item.id" class="food-card" @tap="handleEdit(item)">
           <view class="food-image">
-            <svg viewBox="0 0 64 64" class="food-icon">
+            <image v-if="item.imageUrls && item.imageUrls.length > 0" :src="item.imageUrls[0]" class="food-photo" mode="aspectFill"/>
+            <svg v-else viewBox="0 0 64 64" class="food-icon">
               <circle cx="32" cy="32" r="24" fill="#FFB6C1"/>
               <circle cx="26" cy="28" r="3" fill="#333"/>
               <circle cx="38" cy="28" r="3" fill="#333"/>
@@ -39,8 +40,13 @@
             </svg>
           </view>
           <view class="food-info">
-            <text class="food-name">{{ item.name }}</text>
+            <text class="food-name">{{ item.foodName }}</text>
             <text class="food-calorie">{{ item.calories }} kcal</text>
+          </view>
+          <view class="food-actions">
+            <view class="delete-btn" @tap.stop="handleDelete(item)">
+              <text class="delete-icon">×</text>
+            </view>
           </view>
         </view>
       </view>
@@ -87,30 +93,84 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { getTodayRecords } from '@/api/history/history'
+import { deleteDietRecord } from '@/api/add/add'
+import type { DietItemVO, DailyDietVO, DietRecordVO } from '@/api/types'
+import { MealType } from '@/api/types'
 
-interface FoodItem {
-  id: number
-  name: string
-  calories: number
-  description?: string
-  image?: string
-}
-
-const foodList = ref<FoodItem[]>([])
+const MEAL_TYPE = MealType.BREAKFAST
+const foodList = ref<DietItemVO[]>([])
 
 const totalCalories = computed(() => {
-  return foodList.value.reduce((sum, item) => sum + item.calories, 0)
+  return foodList.value.reduce((sum, item) => sum + Number(item.calories || 0), 0)
 })
+
+async function loadData() {
+  const today = new Date()
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  
+  try {
+    const response = await getTodayRecords(date)
+    if (response && response.data) {
+      const dailyDiet = response.data as DailyDietVO
+      if (dailyDiet.records && dailyDiet.records.length > 0) {
+        const mealRecords = dailyDiet.records.filter((r: DietRecordVO) => 
+          String(r.mealType) === String(MEAL_TYPE)
+        )
+        const allItems: DietItemVO[] = []
+        mealRecords.forEach(record => {
+          if (record.items && record.items.length > 0) {
+            allItems.push(...record.items)
+          }
+        })
+        foodList.value = allItems
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load diet records:', e)
+  }
+}
 
 function handleAdd() {
   uni.navigateTo({ url: '/pages/add/breakFast/edit?mode=add' })
 }
 
-function handleEdit(item: FoodItem) {
+function handleEdit(item: DietItemVO) {
   const foodItemStr = encodeURIComponent(JSON.stringify(item))
   uni.navigateTo({ url: `/pages/add/breakFast/edit?mode=edit&foodItem=${foodItemStr}` })
 }
+
+async function handleDelete(item: DietItemVO) {
+  uni.showModal({
+    title: '删除确认',
+    content: `确定要删除"${item.foodName}"吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await deleteDietRecord(String(item.recordId))
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          await loadData()
+        } catch (e) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+onMounted(() => {
+  loadData()
+})
+
+onShow(() => {
+  loadData()
+})
+
+uni.$on('dietUpdated', () => {
+  loadData()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -222,6 +282,12 @@ function handleEdit(item: FoodItem) {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.food-photo {
+  width: 100%;
+  height: 100%;
 }
 
 .food-icon {
@@ -233,7 +299,7 @@ function handleEdit(item: FoodItem) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 8rpx;
 }
 
 .food-name {
@@ -242,10 +308,41 @@ function handleEdit(item: FoodItem) {
   font-weight: 500;
 }
 
+.food-detail {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.food-remark {
+  font-size: 24rpx;
+  color: #FF69B4;
+}
+
 .food-calorie {
   font-size: 28rpx;
   color: #FF69B4;
   font-weight: 500;
+}
+
+.food-actions {
+  display: flex;
+  align-items: center;
+}
+
+.delete-btn {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255, 105, 180, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-icon {
+  font-size: 36rpx;
+  color: #FF69B4;
+  line-height: 1;
 }
 
 .empty-state {

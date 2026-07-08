@@ -131,8 +131,12 @@ export function exportData(startDate: string, endDate: string) {
   })
 }
 
-export function uploadAttachment(filePath: string) {
+export function uploadAttachment(filePath: string, prefix?: string) {
   const userStore = useUserStore()
+  const formData: Record<string, string> = {}
+  if (prefix) {
+    formData.prefix = prefix
+  }
   return new Promise((resolve, reject) => {
     uni.uploadFile({
       url: BASE_URL + '/api/attachment/upload',
@@ -141,10 +145,11 @@ export function uploadAttachment(filePath: string) {
       header: {
         'Authorization': `Bearer ${userStore.token}`
       },
+      formData,
       success: (res) => {
         try {
           const responseData = JSON.parse(res.data)
-          if (responseData.code === 200) {
+          if (String(responseData.code) === '200') {
             resolve(responseData.data)
           } else {
             uni.showToast({ title: responseData.message || '上传失败', icon: 'none' })

@@ -185,7 +185,7 @@ function chooseAvatar() {
       isUploading.value = true
 
       try {
-        const result: any = await uploadAttachment(filePath)
+        const result: any = await uploadAttachment(filePath, 'avatar/')
         if (result && result.id) {
           avatarFileId.value = String(result.id)
           tempAvatarUrl.value = filePath

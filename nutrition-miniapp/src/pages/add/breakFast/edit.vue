@@ -3,7 +3,8 @@
     <scroll-view scroll-y class="form-scroll">
       <view class="form-content">
         <view class="image-upload-area" @tap="handleImageUpload">
-          <svg viewBox="0 0 200 160" class="food-image-preview">
+          <image v-if="imageUrl" :src="imageUrl" class="food-image-preview" mode="aspectFill"/>
+          <svg v-else viewBox="0 0 200 160" class="food-image-preview">
             <rect x="10" y="10" width="180" height="140" rx="20" fill="#FFF0F3"/>
             <rect x="20" y="20" width="160" height="120" rx="15" fill="#FFB6C1"/>
             <circle cx="100" cy="60" r="20" fill="#FF69B4"/>
@@ -12,7 +13,7 @@
             <path d="M100 66 Q98 69 100 72 Q102 69 100 66" stroke="#333" stroke-width="1.5" fill="none"/>
             <rect x="115" y="55" width="15" height="15" rx="3" fill="#8B4513"/>
             <rect x="117" y="55" width="11" height="6" rx="1" fill="#FFD700"/>
-            <text x="100" y="120" font-size="12" fill="#FF69B4" text-anchor="middle">点击替换图片</text>
+            <text x="100" y="120" font-size="12" fill="#FF69B4" text-anchor="middle">点击上传图片</text>
           </svg>
         </view>
 
@@ -31,7 +32,7 @@
           <textarea 
             v-model="formData.description" 
             class="form-textarea" 
-            placeholder="请尽量填写食物名称 + 具体重量，例：200g 水煮西兰花、1 个全麦面包 + 250ml 纯牛奶"
+            placeholder="请填写食物描述，可描述食物的类型、口味、和原料等等"
             placeholder-class="form-placeholder"
             :maxlength="-1"
           />
@@ -155,6 +156,8 @@ const formData = ref<FormData>({
   calories: '',
   remark: '',
 })
+const imageUrl = ref('')
+const tempFilePath = ref('')
 
 function resetForm() {
   formData.value = {
@@ -164,10 +167,23 @@ function resetForm() {
     calories: '',
     remark: '',
   }
+  imageUrl.value = ''
+  tempFilePath.value = ''
 }
 
 function handleImageUpload() {
-  console.log('Image upload clicked')
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      tempFilePath.value = res.tempFilePaths[0]
+      imageUrl.value = res.tempFilePaths[0]
+    },
+    fail: () => {
+      uni.showToast({ title: '取消选择', icon: 'none' })
+    }
+  })
 }
 
 async function handleAiEstimate() {
@@ -212,6 +228,8 @@ async function handleAiEstimate() {
 }
 
 async function handleSave() {
+  if (isLoading.value) return
+  
   const name = formData.value.name.trim()
   const calories = Number(formData.value.calories)
   
@@ -225,6 +243,8 @@ async function handleSave() {
     return
   }
 
+  isLoading.value = true
+
   try {
     const pages = getCurrentPages()
     const prevPage = pages[pages.length - 2]
@@ -233,7 +253,7 @@ async function handleSave() {
     const today = new Date()
     const recordDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    await addDietRecord({
+    const result = await addDietRecord({
       recordDate,
       mealType,
       items: [{
@@ -243,13 +263,21 @@ async function handleSave() {
         calories,
         remark: formData.value.remark.trim() || undefined,
       }],
-    })
+    }, tempFilePath.value)
 
-    uni.showToast({ title: '保存成功', icon: 'success' })
-    uni.navigateBack()
+    if (result && result.recordId) {
+      uni.showToast({ title: '保存成功', icon: 'success' })
+      uni.$emit('dietUpdated')
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1000)
+    } else {
+      uni.showToast({ title: '保存失败', icon: 'none' })
+    }
   } catch (e) {
     console.error('Save failed:', e)
-    uni.showToast({ title: '保存失败', icon: 'none' })
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -317,11 +345,31 @@ onMounted(() => {
 
 .image-upload-area {
   margin-bottom: 32rpx;
+  position: relative;
 }
 
 .food-image-preview {
   width: 100%;
   height: 320rpx;
+  border-radius: 24rpx;
+}
+
+.upload-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24rpx;
+}
+
+.upload-text {
+  color: #fff;
+  font-size: 28rpx;
 }
 
 .form-item {

@@ -5,13 +5,13 @@
         <text class="header-title">夜宵</text>
         <view class="checkin-icon-wrap">
           <svg viewBox="0 0 64 64" class="checkin-icon">
-            <circle cx="32" cy="32" r="28" fill="#FFB6C1"/>
+            <circle cx="32" cy="32" r="28" fill="#DDA0DD"/>
             <circle cx="24" cy="28" r="4" fill="#333"/>
             <circle cx="40" cy="28" r="4" fill="#333"/>
             <circle cx="25" cy="27" r="1.5" fill="#fff"/>
             <circle cx="41" cy="27" r="1.5" fill="#fff"/>
             <path d="M32 36 Q30 40 32 44 Q34 40 32 36" stroke="#333" stroke-width="2" fill="none"/>
-            <rect x="38" y="18" width="14" height="12" rx="2" fill="#FF69B4"/>
+            <rect x="38" y="18" width="14" height="12" rx="2" fill="#9370DB"/>
             <text x="45" y="27" font-size="8" fill="#fff" text-anchor="middle">20</text>
           </svg>
         </view>
@@ -27,36 +27,42 @@
       <view v-if="foodList.length > 0" class="food-list">
         <view v-for="item in foodList" :key="item.id" class="food-card" @tap="handleEdit(item)">
           <view class="food-image">
-            <svg viewBox="0 0 64 64" class="food-icon">
-              <circle cx="32" cy="32" r="24" fill="#FFB6C1"/>
+            <image v-if="item.imageUrls && item.imageUrls.length > 0" :src="item.imageUrls[0]" class="food-photo" mode="aspectFill"/>
+            <svg v-else viewBox="0 0 64 64" class="food-icon">
+              <circle cx="32" cy="32" r="24" fill="#DDA0DD"/>
               <circle cx="26" cy="28" r="3" fill="#333"/>
               <circle cx="38" cy="28" r="3" fill="#333"/>
               <circle cx="27" cy="27" r="1" fill="#fff"/>
               <circle cx="39" cy="27" r="1" fill="#fff"/>
               <path d="M32 35 Q30 38 32 41 Q34 38 32 35" stroke="#333" stroke-width="1.5" fill="none"/>
-              <rect x="40" y="30" width="10" height="10" rx="2" fill="#FF69B4"/>
-              <rect x="42" y="32" width="6" height="6" rx="1" fill="#FFB6C1"/>
+              <rect x="40" y="30" width="10" height="10" rx="2" fill="#9370DB"/>
+              <rect x="42" y="32" width="6" height="6" rx="1" fill="#DDA0DD"/>
             </svg>
           </view>
           <view class="food-info">
-            <text class="food-name">{{ item.name }}</text>
+            <text class="food-name">{{ item.foodName }}</text>
             <text class="food-calorie">{{ item.calories }} kcal</text>
+          </view>
+          <view class="food-actions">
+            <view class="delete-btn" @tap.stop="handleDelete(item)">
+              <text class="delete-icon">×</text>
+            </view>
           </view>
         </view>
       </view>
       <view v-else class="empty-state">
         <svg viewBox="0 0 100 100" class="empty-cat-icon">
-          <ellipse cx="50" cy="70" rx="25" ry="15" fill="#FFB6C1"/>
-          <circle cx="50" cy="45" r="22" fill="#FFB6C1"/>
-          <ellipse cx="35" cy="35" rx="8" ry="12" fill="#FFB6C1"/>
-          <ellipse cx="65" cy="35" rx="8" ry="12" fill="#FFB6C1"/>
-          <ellipse cx="35" cy="37" rx="5" ry="8" fill="#FFC0CB"/>
-          <ellipse cx="65" cy="37" rx="5" ry="8" fill="#FFC0CB"/>
+          <ellipse cx="50" cy="70" rx="25" ry="15" fill="#DDA0DD"/>
+          <circle cx="50" cy="45" r="22" fill="#DDA0DD"/>
+          <ellipse cx="35" cy="35" rx="8" ry="12" fill="#DDA0DD"/>
+          <ellipse cx="65" cy="35" rx="8" ry="12" fill="#DDA0DD"/>
+          <ellipse cx="35" cy="37" rx="5" ry="8" fill="#E8C0E8"/>
+          <ellipse cx="65" cy="37" rx="5" ry="8" fill="#E8C0E8"/>
           <circle cx="42" cy="42" r="3" fill="#333"/>
           <circle cx="58" cy="42" r="3" fill="#333"/>
           <circle cx="43" cy="41" r="1" fill="#fff"/>
           <circle cx="59" cy="41" r="1" fill="#fff"/>
-          <ellipse cx="50" cy="52" rx="3" ry="2" fill="#FF69B4"/>
+          <ellipse cx="50" cy="52" rx="3" ry="2" fill="#9370DB"/>
           <path d="M46 56 Q50 60 54 56" stroke="#333" stroke-width="1.5" fill="none"/>
           <line x1="28" y1="50" x2="15" y2="48" stroke="#333" stroke-width="1"/>
           <line x1="28" y1="52" x2="15" y2="53" stroke="#333" stroke-width="1"/>
@@ -70,7 +76,7 @@
     <view class="bottom-btn-wrap">
       <view class="add-btn" @tap="handleAdd">
         <svg viewBox="0 0 48 48" class="add-icon">
-          <circle cx="24" cy="24" r="20" fill="#FF69B4"/>
+          <circle cx="24" cy="24" r="20" fill="#9370DB"/>
           <circle cx="18" cy="22" r="3" fill="#333"/>
           <circle cx="30" cy="22" r="3" fill="#333"/>
           <circle cx="19" cy="21" r="1" fill="#fff"/>
@@ -87,36 +93,90 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { getTodayRecords } from '@/api/history/history'
+import { deleteDietRecord } from '@/api/add/add'
+import type { DietItemVO, DailyDietVO, DietRecordVO } from '@/api/types'
+import { MealType } from '@/api/types'
 
-interface FoodItem {
-  id: number
-  name: string
-  calories: number
-  description?: string
-  image?: string
-}
-
-const foodList = ref<FoodItem[]>([])
+const MEAL_TYPE = MealType.SNACK
+const foodList = ref<DietItemVO[]>([])
 
 const totalCalories = computed(() => {
-  return foodList.value.reduce((sum, item) => sum + item.calories, 0)
+  return foodList.value.reduce((sum, item) => sum + Number(item.calories || 0), 0)
 })
+
+async function loadData() {
+  const today = new Date()
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  
+  try {
+    const response = await getTodayRecords(date)
+    if (response && response.data) {
+      const dailyDiet = response.data as DailyDietVO
+      if (dailyDiet.records && dailyDiet.records.length > 0) {
+        const mealRecords = dailyDiet.records.filter((r: DietRecordVO) => 
+          String(r.mealType) === String(MEAL_TYPE)
+        )
+        const allItems: DietItemVO[] = []
+        mealRecords.forEach(record => {
+          if (record.items && record.items.length > 0) {
+            allItems.push(...record.items)
+          }
+        })
+        foodList.value = allItems
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load diet records:', e)
+  }
+}
 
 function handleAdd() {
   uni.navigateTo({ url: '/pages/add/snack/edit?mode=add' })
 }
 
-function handleEdit(item: FoodItem) {
+function handleEdit(item: DietItemVO) {
   const foodItemStr = encodeURIComponent(JSON.stringify(item))
   uni.navigateTo({ url: `/pages/add/snack/edit?mode=edit&foodItem=${foodItemStr}` })
 }
+
+async function handleDelete(item: DietItemVO) {
+  uni.showModal({
+    title: '删除确认',
+    content: `确定要删除"${item.foodName}"吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await deleteDietRecord(String(item.recordId))
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          await loadData()
+        } catch (e) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+onMounted(() => {
+  loadData()
+})
+
+onShow(() => {
+  loadData()
+})
+
+uni.$on('dietUpdated', () => {
+  loadData()
+})
 </script>
 
 <style lang="scss" scoped>
 .page-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #FFF9FA 0%, #FFF5F7 100%);
+  background: linear-gradient(180deg, #FAF5FF 0%, #F5EEFF 100%);
   padding-bottom: 180rpx;
   position: relative;
 }
@@ -128,7 +188,7 @@ function handleEdit(item: FoodItem) {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='2' fill='%23FFB6C1' opacity='0.15'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='2' fill='%23DDA0DD' opacity='0.15'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
 }
@@ -139,11 +199,11 @@ function handleEdit(item: FoodItem) {
 }
 
 .header-card {
-  background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+  background: linear-gradient(135deg, #DDA0DD 0%, #9370DB 100%);
   border-radius: 40rpx;
   padding: 40rpx;
   margin: 24rpx;
-  box-shadow: 0 12rpx 32rpx rgba(255, 105, 180, 0.25);
+  box-shadow: 0 12rpx 32rpx rgba(147, 112, 219, 0.25);
 }
 
 .header-content {
@@ -209,19 +269,25 @@ function handleEdit(item: FoodItem) {
   margin-bottom: 20rpx;
   background: #FFFFFF;
   border-radius: 32rpx;
-  box-shadow: 0 8rpx 20rpx rgba(255, 182, 193, 0.12);
-  border: 2rpx solid rgba(255, 182, 193, 0.2);
+  box-shadow: 0 8rpx 20rpx rgba(221, 160, 221, 0.12);
+  border: 2rpx solid rgba(221, 160, 221, 0.2);
 }
 
 .food-image {
   width: 120rpx;
   height: 120rpx;
   border-radius: 24rpx;
-  background: rgba(255, 182, 193, 0.1);
+  background: rgba(221, 160, 221, 0.1);
   margin-right: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.food-photo {
+  width: 100%;
+  height: 100%;
 }
 
 .food-icon {
@@ -233,7 +299,7 @@ function handleEdit(item: FoodItem) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 8rpx;
 }
 
 .food-name {
@@ -242,10 +308,41 @@ function handleEdit(item: FoodItem) {
   font-weight: 500;
 }
 
+.food-detail {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.food-remark {
+  font-size: 24rpx;
+  color: #9370DB;
+}
+
 .food-calorie {
   font-size: 28rpx;
-  color: #FF69B4;
+  color: #9370DB;
   font-weight: 500;
+}
+
+.food-actions {
+  display: flex;
+  align-items: center;
+}
+
+.delete-btn {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(147, 112, 219, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-icon {
+  font-size: 36rpx;
+  color: #9370DB;
+  line-height: 1;
 }
 
 .empty-state {
@@ -274,7 +371,7 @@ function handleEdit(item: FoodItem) {
   right: 0;
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 249, 250, 0.95);
+  background: rgba(250, 245, 255, 0.95);
   backdrop-filter: blur(20rpx);
 }
 
@@ -284,9 +381,9 @@ function handleEdit(item: FoodItem) {
   justify-content: center;
   gap: 16rpx;
   padding: 28rpx;
-  background: linear-gradient(135deg, #FF69B4 0%, #FFB6C1 100%);
+  background: linear-gradient(135deg, #9370DB 0%, #DDA0DD 100%);
   border-radius: 40rpx;
-  box-shadow: 0 8rpx 24rpx rgba(255, 105, 180, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(147, 112, 219, 0.3);
 }
 
 .add-icon {

@@ -3,6 +3,7 @@ package com.nutrition.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.nutrition.entity.DietRecord;
 import com.nutrition.vo.DailyDietVO;
+import com.nutrition.vo.DietItemVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -59,4 +60,24 @@ public interface DietRecordService extends IService<DietRecord> {
      * @param date   日期字符串，格式：YYYY-MM-DD
      */
     void clearDietCache(Long userId, String date);
+
+    /**
+     * 查询饮食项详情
+     *
+     * @param userId 用户ID
+     * @param itemId 饮食项ID
+     * @return 饮食项详情
+     */
+    DietItemVO getDietItemDetail(Long userId, Long itemId);
+
+    /**
+     * 更新饮食项
+     *
+     * @param userId 用户ID
+     * @param param  更新饮食项请求参数
+     * @param file   食物图片文件（可选）
+     * @return 饮食项ID
+     * @throws IOException 文件上传异常
+     */
+    Long updateDietItem(Long userId, com.nutrition.param.DietRecordParam param, MultipartFile file) throws IOException;
 }

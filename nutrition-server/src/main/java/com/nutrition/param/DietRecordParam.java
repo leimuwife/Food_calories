@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -40,10 +41,12 @@ public class DietRecordParam {
         private String foodDesc;
 
         @NotNull(message = "重量不能为空")
+        @Positive(message = "重量必须大于0")
         @Schema(description = "食用重量(g)")
         private BigDecimal weight;
 
         @NotNull(message = "热量不能为空")
+        @Positive(message = "热量必须大于0")
         @Schema(description = "总热量kcal（AI估算/手动填写）")
         private BigDecimal calories;
 
@@ -52,5 +55,8 @@ public class DietRecordParam {
 
         @Schema(description = "食物图片附件ID列表，多个用逗号分隔")
         private String fileIds;
+
+        @Schema(description = "饮食项ID，编辑时必填")
+        private Long id;
     }
 }

@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -48,6 +49,9 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     private final ObjectMapper objectMapper;
     private final RedisCache redisCache;
     private final AttachmentService attachmentService;
+
+    @Value("${nutrition.default-image.food}")
+    private String defaultFoodImageUrl;
 
     private static final int MAX_QUERY_DAYS_OFFSET = 90;
 
@@ -80,30 +84,18 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     @Transactional
     public Long addDietRecord(Long userId, com.nutrition.param.DietRecordParam param, MultipartFile file) throws IOException {
         if (userId == null || userId <= 0) {
+            log.error("添加饮食记录失败: 用户ID无效, userId={}", userId);
             throw new BusinessException(400, "用户ID无效");
         }
-        if (param == null) {
-            throw new BusinessException(400, "请求参数不能为空");
-        }
 
-        LocalDate recordDate;
-        try {
-            recordDate = LocalDate.parse(param.getRecordDate());
-        } catch (Exception e) {
-            throw new BusinessException(400, "日期格式错误，应为YYYY-MM-DD");
-        }
-
+        LocalDate recordDate = parseDate(param.getRecordDate(), userId);
         LocalDate today = LocalDate.now();
         if (recordDate.isAfter(today)) {
+            log.error("添加饮食记录失败: 记录日期不能大于今天, userId={}, recordDate={}, today={}", userId, recordDate, today);
             throw new BusinessException(400, "记录日期不能大于今天");
         }
 
-        MealType mealType;
-        try {
-            mealType = MealType.fromCode(param.getMealType());
-        } catch (Exception e) {
-            throw new BusinessException(400, "无效的餐次类型");
-        }
+        MealType mealType = parseMealType(param.getMealType(), userId);
 
         DietRecord dietRecord = new DietRecord();
         dietRecord.setUserId(userId);
@@ -119,6 +111,18 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
             Attachment attachment = attachmentService.upload(file, userId, "diet/");
             fileIdsStr = String.valueOf(attachment.getId());
             log.info("饮食记录附件上传成功: recordId={}, attachmentId={}", recordId, attachment.getId());
+        } else {
+            Attachment defaultAttachment = new Attachment();
+            defaultAttachment.setFileName("defult_food.png");
+            defaultAttachment.setFileSuffix(".png");
+            defaultAttachment.setFileSize(0L);
+            defaultAttachment.setFileUrl(defaultFoodImageUrl);
+            defaultAttachment.setStorageType(2);
+            defaultAttachment.setUploadUserId(userId);
+            defaultAttachment.setDeleteFlag(0);
+            attachmentMapper.insert(defaultAttachment);
+            fileIdsStr = String.valueOf(defaultAttachment.getId());
+            log.info("使用默认食物图片: recordId={}, attachmentId={}, url={}", recordId, defaultAttachment.getId(), defaultFoodImageUrl);
         }
 
         for (com.nutrition.param.DietRecordParam.DietItemParam itemParam : param.getItems()) {
@@ -385,9 +389,19 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
 
         String fileIdsStr = item.getFileIds();
         if (StringUtils.hasText(fileIdsStr)) {
-            List<Long> fileIdList = processResult.fileIdsCache.getOrDefault(fileIdsStr, Collections.emptyList());
+            List<Long> fileIdList;
+            Map<Long, String> fileUrlMap;
+            
+            if (processResult != null) {
+                fileIdList = processResult.fileIdsCache.getOrDefault(fileIdsStr, Collections.emptyList());
+                fileUrlMap = processResult.fileUrlMap;
+            } else {
+                fileIdList = parseFileIds(fileIdsStr);
+                fileUrlMap = loadFileUrls(fileIdList);
+            }
+            
             List<String> urls = fileIdList.stream()
-                    .map(processResult.fileUrlMap::get)
+                    .map(fileUrlMap::get)
                     .filter(StringUtils::hasText)
                     .collect(Collectors.toList());
             vo.setImageUrls(urls);
@@ -448,9 +462,11 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     public void deleteDietRecord(Long userId, Long recordId) {
         DietRecord record = baseMapper.selectById(recordId);
         if (record == null) {
+            log.error("删除饮食记录失败: 饮食记录不存在, userId={}, recordId={}", userId, recordId);
             throw new BusinessException(404, "饮食记录不存在");
         }
         if (!record.getUserId().equals(userId)) {
+            log.error("删除饮食记录失败: 无权删除该记录, userId={}, recordId={}, recordUserId={}", userId, recordId, record.getUserId());
             throw new BusinessException(403, "无权删除该记录");
         }
 
@@ -464,6 +480,82 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
         log.debug("用户{}删除饮食记录{}，已清除缓存", userId, recordId);
     }
 
+    @Override
+    public DietItemVO getDietItemDetail(Long userId, Long itemId) {
+        DietItem item = dietItemMapper.selectById(itemId);
+        if (item == null) {
+            log.error("查询饮食项详情失败: 饮食项不存在, userId={}, itemId={}", userId, itemId);
+            throw new BusinessException(404, "饮食项不存在");
+        }
+
+        DietRecord record = baseMapper.selectById(item.getRecordId());
+        if (record == null || !record.getUserId().equals(userId)) {
+            log.error("查询饮食项详情失败: 无权访问该饮食项, userId={}, itemId={}, recordId={}", userId, itemId, item.getRecordId());
+            throw new BusinessException(403, "无权访问该饮食项");
+        }
+
+        return convertToItemVO(item, null);
+    }
+
+    /**
+     * 更新饮食项
+     * 更新食物项信息，支持文件上传和默认图片兜底
+     *
+     * @param userId 用户ID
+     * @param param  更新饮食项请求参数
+     * @param file   食物图片文件（可选）
+     * @return 饮食项ID
+     * @throws IOException 文件上传异常
+     */
+    @Override
+    @Transactional
+    public Long updateDietItem(Long userId, com.nutrition.param.DietRecordParam param, MultipartFile file) throws IOException {
+        if (userId == null || userId <= 0) {
+            log.error("更新饮食项失败: 用户ID无效, userId={}", userId);
+            throw new BusinessException(400, "用户ID无效");
+        }
+
+        com.nutrition.param.DietRecordParam.DietItemParam itemParam = param.getItems().get(0);
+        if (itemParam.getId() == null) {
+            log.error("更新饮食项失败: 饮食项ID不能为空, userId={}", userId);
+            throw new BusinessException(400, "饮食项ID不能为空");
+        }
+
+        DietItem existingItem = dietItemMapper.selectById(itemParam.getId());
+        if (existingItem == null) {
+            log.error("更新饮食项失败: 饮食项不存在, userId={}, itemId={}", userId, itemParam.getId());
+            throw new BusinessException(404, "饮食项不存在");
+        }
+
+        DietRecord record = baseMapper.selectById(existingItem.getRecordId());
+        if (record == null || !record.getUserId().equals(userId)) {
+            log.error("更新饮食项失败: 无权修改该饮食项, userId={}, itemId={}, recordUserId={}", userId, itemParam.getId(), record != null ? record.getUserId() : null);
+            throw new BusinessException(403, "无权修改该饮食项");
+        }
+
+        String fileIdsStr = existingItem.getFileIds();
+        if (file != null && !file.isEmpty()) {
+            Attachment attachment = attachmentService.upload(file, userId, "diet/");
+            fileIdsStr = String.valueOf(attachment.getId());
+            log.info("饮食项图片更新成功: itemId={}, attachmentId={}", itemParam.getId(), attachment.getId());
+        }
+
+        existingItem.setFoodName(itemParam.getFoodName());
+        existingItem.setFoodDesc(itemParam.getFoodDesc());
+        existingItem.setWeight(itemParam.getWeight());
+        existingItem.setCalories(itemParam.getCalories());
+        existingItem.setRemark(itemParam.getRemark());
+        existingItem.setFileIds(fileIdsStr);
+
+        dietItemMapper.updateById(existingItem);
+
+        clearDietCache(userId, record.getRecordDate().toString());
+
+        log.info("用户{}更新饮食项成功: itemId={}", userId, itemParam.getId());
+
+        return itemParam.getId();
+    }
+
     /**
      * 食物项处理结果内部类
      * 用于存储处理过程中的中间数据
@@ -474,5 +566,37 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
         Map<String, List<Long>> fileIdsCache = new HashMap<>();
         List<Long> uniqueFileIds = new ArrayList<>();
         Map<Long, String> fileUrlMap = Collections.emptyMap();
+    }
+
+    /**
+     * 解析日期字符串
+     *
+     * @param dateStr 日期字符串（YYYY-MM-DD）
+     * @param userId  用户ID
+     * @return LocalDate
+     */
+    private LocalDate parseDate(String dateStr, Long userId) {
+        try {
+            return LocalDate.parse(dateStr);
+        } catch (Exception e) {
+            log.error("日期格式解析失败: userId={}, dateStr={}", userId, dateStr, e);
+            throw new BusinessException(400, "日期格式错误，应为YYYY-MM-DD");
+        }
+    }
+
+    /**
+     * 解析餐次类型
+     *
+     * @param mealTypeCode 餐次类型代码
+     * @param userId       用户ID
+     * @return MealType
+     */
+    private MealType parseMealType(String mealTypeCode, Long userId) {
+        try {
+            return MealType.fromCode(mealTypeCode);
+        } catch (Exception e) {
+            log.error("餐次类型解析失败: userId={}, mealTypeCode={}", userId, mealTypeCode, e);
+            throw new BusinessException(400, "无效的餐次类型");
+        }
     }
 }

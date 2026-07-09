@@ -32,14 +32,14 @@ public class GlobalExceptionHandler {
                     .map(FieldError::getDefaultMessage)
                     .collect(Collectors.joining("; "));
         }
-        log.warn("参数校验异常: {}", message);
+        log.error("参数校验异常: {}", message);
         return Result.badRequest(message);
     }
 
     /** 业务异常 */
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException ex) {
-        log.warn("业务异常: code={}, message={}", ex.getCode(), ex.getMessage());
+        log.error("业务异常: code={}, message={}", ex.getCode(), ex.getMessage());
         return Result.fail(ex.getCode(), ex.getMessage());
     }
 

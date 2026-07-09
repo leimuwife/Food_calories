@@ -3,18 +3,7 @@
     <scroll-view scroll-y class="form-scroll">
       <view class="form-content">
         <view class="image-upload-area" @tap="handleImageUpload">
-          <image v-if="imageUrl" :src="imageUrl" class="food-image-preview" mode="aspectFill"/>
-          <svg v-else viewBox="0 0 200 160" class="food-image-preview">
-            <rect x="10" y="10" width="180" height="140" rx="20" fill="#FFF0F3"/>
-            <rect x="20" y="20" width="160" height="120" rx="15" fill="#FFB6C1"/>
-            <circle cx="100" cy="60" r="20" fill="#FF69B4"/>
-            <circle cx="92" cy="58" r="3" fill="#333"/>
-            <circle cx="108" cy="58" r="3" fill="#333"/>
-            <path d="M100 66 Q98 69 100 72 Q102 69 100 66" stroke="#333" stroke-width="1.5" fill="none"/>
-            <rect x="115" y="55" width="15" height="15" rx="3" fill="#8B4513"/>
-            <rect x="117" y="55" width="11" height="6" rx="1" fill="#FFD700"/>
-            <text x="100" y="120" font-size="12" fill="#FF69B4" text-anchor="middle">点击上传图片</text>
-          </svg>
+          <image :src="imageUrl || '/static/AI/defult_food.png'" class="food-image-preview" mode="aspectFill"/>
         </view>
 
         <view class="form-item">
@@ -32,7 +21,7 @@
           <textarea 
             v-model="formData.description" 
             class="form-textarea" 
-            placeholder="请尽量填写食物名称 + 具体重量，例：200g 水煮西兰花、1 个全麦面包 + 250ml 纯牛奶"
+            placeholder="请填写食物描述，可描述食物的类型、口味、和原料等等"
             placeholder-class="form-placeholder"
             :maxlength="-1"
           />
@@ -119,7 +108,7 @@
           <circle cx="59" cy="45" r="1" fill="#fff"/>
           <path d="M50 54 Q48 57 50 60 Q52 57 50 54" stroke="#333" stroke-width="1.5" fill="none"/>
         </svg>
-        <text class="loading-text">AI 正在计算热量...</text>
+        <text class="loading-text">保存中...</text>
       </view>
     </view>
   </view>
@@ -127,7 +116,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { estimateCalories, addDietRecord } from '@/api/add/add'
+import { estimateCalories, addDietRecord, getDietItemDetail, updateDietItem } from '@/api/add/add'
 import type { MealType } from '@/api/types'
 
 interface FoodItem {
@@ -158,6 +147,8 @@ const formData = ref<FormData>({
 })
 const imageUrl = ref('')
 const tempFilePath = ref('')
+const recordDate = ref('')
+const itemId = ref<string | null>(null)
 
 function resetForm() {
   formData.value = {
@@ -249,24 +240,42 @@ async function handleSave() {
     const pages = getCurrentPages()
     const prevPage = pages[pages.length - 2]
     const mealType = (prevPage as any).$page?.route?.split('/').pop()?.replace('index', '') as MealType || 'lunch'
-    
-    const today = new Date()
-    const recordDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    const result = await addDietRecord({
-      recordDate,
-      mealType,
-      items: [{
-        foodName: name,
-        foodDesc: formData.value.description.trim() || undefined,
-        weight: Number(formData.value.weight) || 0,
-        calories,
-        remark: formData.value.remark.trim() || undefined,
-      }],
-    }, tempFilePath.value)
+    const date = recordDate.value || (() => {
+      const today = new Date()
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    })()
 
-    if (result && result.recordId) {
-      uni.showToast({ title: '保存成功', icon: 'success' })
+    const itemData = {
+      foodName: name,
+      foodDesc: formData.value.description.trim() || undefined,
+      weight: Number(formData.value.weight) || 0,
+      calories,
+      remark: formData.value.remark.trim() || undefined,
+    }
+
+    let success = false
+    if (mode.value === 'edit' && itemId.value) {
+      const result = await updateDietItem({
+        recordDate: date,
+        mealType,
+        items: [{
+          ...itemData,
+          id: itemId.value,
+        }],
+      }, tempFilePath.value)
+      success = result && result.itemId !== undefined
+    } else {
+      const result = await addDietRecord({
+        recordDate: date,
+        mealType,
+        items: [itemData],
+      }, tempFilePath.value)
+      success = result && result.recordId !== undefined
+    }
+
+    if (success) {
+      uni.showToast({ title: mode.value === 'edit' ? '更新成功' : '保存成功', icon: 'success' })
       uni.$emit('dietUpdated')
       setTimeout(() => {
         uni.navigateBack()
@@ -276,32 +285,44 @@ async function handleSave() {
     }
   } catch (e) {
     console.error('Save failed:', e)
+    uni.showToast({ title: '保存失败，请重试', icon: 'none' })
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  const options = (currentPage as any).$page?.options || {}
+  const options = (currentPage as any).options || (currentPage as any).$page?.options || {}
   
   mode.value = options.mode === 'edit' ? 'edit' : 'add'
   
+  if (options.date) {
+    recordDate.value = options.date
+  }
+  
   if (mode.value === 'edit') {
-    const foodItemStr = options.foodItem
-    if (foodItemStr) {
+    const id = options.itemId
+    if (id) {
+      itemId.value = String(id)
       try {
-        const foodItem: FoodItem = JSON.parse(decodeURIComponent(foodItemStr))
-        formData.value = {
-          name: foodItem.name,
-          description: foodItem.description || '',
-          weight: String(foodItem.weight || ''),
-          calories: String(foodItem.calories),
-          remark: foodItem.remark || '',
+        const result = await getDietItemDetail(id)
+        if (result && result.data) {
+          const detail = result.data
+          formData.value = {
+            name: detail.foodName || '',
+            description: detail.foodDesc || '',
+            weight: String(detail.weight || ''),
+            calories: String(detail.calories || ''),
+            remark: detail.remark || '',
+          }
+          if (detail.imageUrls && detail.imageUrls.length > 0) {
+            imageUrl.value = detail.imageUrls[0]
+          }
         }
       } catch (e) {
-        console.error('Parse food item error:', e)
+        console.error('Load food item detail error:', e)
       }
     }
   } else {

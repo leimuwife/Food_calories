@@ -16,8 +16,17 @@
           </svg>
         </view>
       </view>
+      <view class="date-picker-wrap">
+        <picker mode="date" :value="selectedDate" @change="handleDateChange">
+          <view class="date-picker-btn">
+            <text class="date-icon">📅</text>
+            <text class="date-text">{{ formatDate(selectedDate) }}</text>
+            <text class="date-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
       <view class="calorie-summary">
-        <text class="summary-label">今日晚餐总热量</text>
+        <text class="summary-label">{{ getDateLabel() }}晚餐总热量</text>
         <text class="summary-value">{{ totalCalories }}</text>
         <text class="summary-unit">kcal</text>
       </view>
@@ -103,16 +112,38 @@ import { MealType } from '@/api/types'
 const MEAL_TYPE = MealType.DINNER
 const foodList = ref<DietItemVO[]>([])
 
+const today = new Date()
+const selectedDate = ref(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
+
 const totalCalories = computed(() => {
   return foodList.value.reduce((sum, item) => sum + Number(item.calories || 0), 0)
 })
 
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekday = weekdays[date.getDay()]
+  return `${month}月${day}日 ${weekday}`
+}
+
+function getDateLabel() {
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  if (selectedDate.value === todayStr) {
+    return '今日'
+  }
+  return ''
+}
+
+function handleDateChange(e: { detail: { value: string } }) {
+  selectedDate.value = e.detail.value
+  loadData()
+}
+
 async function loadData() {
-  const today = new Date()
-  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  
   try {
-    const response = await getTodayRecords(date)
+    const response = await getTodayRecords(selectedDate.value)
     if (response && response.data) {
       const dailyDiet = response.data as DailyDietVO
       if (dailyDiet.records && dailyDiet.records.length > 0) {
@@ -126,20 +157,24 @@ async function loadData() {
           }
         })
         foodList.value = allItems
+      } else {
+        foodList.value = []
       }
+    } else {
+      foodList.value = []
     }
   } catch (e) {
     console.error('Failed to load diet records:', e)
+    foodList.value = []
   }
 }
 
 function handleAdd() {
-  uni.navigateTo({ url: '/pages/add/dinner/edit?mode=add' })
+  uni.navigateTo({ url: `/pages/add/dinner/edit?mode=add&date=${selectedDate.value}` })
 }
 
 function handleEdit(item: DietItemVO) {
-  const foodItemStr = encodeURIComponent(JSON.stringify(item))
-  uni.navigateTo({ url: `/pages/add/dinner/edit?mode=edit&foodItem=${foodItemStr}` })
+  uni.navigateTo({ url: `/pages/add/dinner/edit?mode=edit&itemId=${item.id}&date=${selectedDate.value}` })
 }
 
 async function handleDelete(item: DietItemVO) {
@@ -228,6 +263,37 @@ uni.$on('dietUpdated', () => {
 .checkin-icon {
   width: 100%;
   height: 100%;
+}
+
+.date-picker-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 16rpx 0;
+}
+
+.date-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 32rpx;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 40rpx;
+  backdrop-filter: blur(10px);
+}
+
+.date-icon {
+  font-size: 28rpx;
+}
+
+.date-text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.date-arrow {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .calorie-summary {

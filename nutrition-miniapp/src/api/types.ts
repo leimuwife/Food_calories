@@ -118,7 +118,7 @@ export interface WxLoginParam {
 export interface DietRecordParam {
   recordDate: string
   mealType: MealType
-  items: { foodName: string; foodDesc?: string; weight: number; calories: number; remark?: string; fileIds?: string }[]
+  items: { id?: string | number; foodName: string; foodDesc?: string; weight: number; calories: number; remark?: string; fileIds?: string }[]
   remark?: string
 }
 

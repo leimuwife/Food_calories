@@ -280,12 +280,11 @@ async function handleSave() {
       setTimeout(() => {
         uni.navigateBack()
       }, 1000)
-    } else {
-      uni.showToast({ title: '保存失败', icon: 'none' })
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('Save failed:', e)
-    uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+    const errMsg = (e instanceof Error && e.message) ? e.message : '保存失败，请重试'
+    uni.showToast({ title: errMsg, icon: 'none', duration: 3000 })
   } finally {
     isLoading.value = false
   }

@@ -48,19 +48,13 @@ export default function request<T = unknown>(options: RequestOptions): Promise<A
           resolve(responseData)
         } else if (statusCode === 401) {
           userStore.logout()
-          uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
-          reject(new Error('Unauthorized'))
+          reject(new Error('登录已过期，请重新登录'))
         } else {
-          uni.showToast({
-            title: responseData.message || '请求失败',
-            icon: 'none',
-          })
-          reject(new Error(responseData.message || 'Request failed'))
+          reject(new Error(responseData.message || '请求失败'))
         }
       },
       fail: (err) => {
-        uni.showToast({ title: '网络异常，请检查网络', icon: 'none' })
-        reject(err)
+        reject(new Error('网络异常，请检查网络连接'))
       },
       complete: () => {
         if (showLoading) {

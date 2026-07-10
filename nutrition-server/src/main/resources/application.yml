@@ -85,3 +85,10 @@ logging:
 nutrition:
   default-image:
     food: https://nutrition-file-202607.oss-cn-beijing.aliyuncs.com/default/food-placeholder.png
+
+wx:
+  mini:
+    app-id: ${WX_MINI_APPID:}
+    app-secret: ${WX_MINI_APPSECRET:}
+    token-expire-seconds: 7200
+    token-refresh-seconds: 60

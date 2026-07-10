@@ -6,12 +6,17 @@ import com.nutrition.common.BusinessException;
 import com.nutrition.entity.Attachment;
 import com.nutrition.entity.DietItem;
 import com.nutrition.entity.DietRecord;
+import com.nutrition.entity.SysUser;
+import com.nutrition.enums.AuditSceneEnum;
+import com.nutrition.enums.AuditSuggestEnum;
 import com.nutrition.enums.MealType;
 import com.nutrition.mapper.AttachmentMapper;
 import com.nutrition.mapper.DietItemMapper;
 import com.nutrition.mapper.DietRecordMapper;
 import com.nutrition.service.AttachmentService;
+import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.DietRecordService;
+import com.nutrition.service.UserService;
 import com.nutrition.util.IdConvertUtil;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.DailyDietVO;
@@ -49,6 +54,8 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     private final ObjectMapper objectMapper;
     private final RedisCache redisCache;
     private final AttachmentService attachmentService;
+    private final ContentAuditService contentAuditService;
+    private final UserService userService;
 
     @Value("${nutrition.default-image.food}")
     private String defaultFoodImageUrl;
@@ -97,6 +104,40 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
 
         MealType mealType = parseMealType(param.getMealType(), userId);
 
+        SysUser user = userService.getCurrentUser(userId);
+        String openid = user != null ? user.getOpenid() : null;
+
+        StringBuilder allTextContent = new StringBuilder();
+        for (com.nutrition.param.DietRecordParam.DietItemParam itemParam : param.getItems()) {
+            if (itemParam.getFoodName() != null) {
+                allTextContent.append(itemParam.getFoodName()).append(" ");
+            }
+            if (itemParam.getFoodDesc() != null) {
+                allTextContent.append(itemParam.getFoodDesc()).append(" ");
+            }
+            if (itemParam.getRemark() != null) {
+                allTextContent.append(itemParam.getRemark()).append(" ");
+            }
+        }
+
+        if (allTextContent.length() > 0) {
+            try {
+                AuditSuggestEnum textAuditResult = contentAuditService.auditText(userId, openid, allTextContent.toString(), AuditSceneEnum.DIET_REMARK);
+                if (textAuditResult == AuditSuggestEnum.RISKY) {
+                    log.warn("饮食记录文本审核需要人工审核: userId={}, contentLength={}", userId, allTextContent.length());
+                    throw new BusinessException(400, "内容需要人工审核，请稍后重试");
+                } else if (textAuditResult == AuditSuggestEnum.BLOCK) {
+                    log.warn("饮食记录文本审核未通过: userId={}, contentLength={}", userId, allTextContent.length());
+                    throw new BusinessException(400, "内容包含违规信息，请修改后重新提交");
+                }
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("饮食记录文本审核异常: userId={}, error={}", userId, e.getMessage(), e);
+                throw new BusinessException(500, "内容审核服务暂时不可用，请稍后重试");
+            }
+        }
+
         DietRecord dietRecord = new DietRecord();
         dietRecord.setUserId(userId);
         dietRecord.setRecordDate(recordDate);
@@ -107,10 +148,37 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
         Long recordId = dietRecord.getId();
 
         String fileIdsStr = null;
+        Long uploadedAttachmentId = null;
+
         if (file != null && !file.isEmpty()) {
             Attachment attachment = attachmentService.upload(file, userId, "diet/");
+            uploadedAttachmentId = attachment.getId();
             fileIdsStr = String.valueOf(attachment.getId());
             log.info("饮食记录附件上传成功: recordId={}, attachmentId={}", recordId, attachment.getId());
+
+            try {
+                AuditSuggestEnum imageAuditResult = contentAuditService.auditImages(userId, openid, java.util.Collections.singletonList(fileIdsStr), AuditSceneEnum.DIET_REMARK);
+                if (imageAuditResult == AuditSuggestEnum.RISKY) {
+                    log.warn("饮食记录图片审核需要人工审核: userId={}, attachmentId={}", userId, attachment.getId());
+                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
+                    log.warn("饮食记录图片审核未通过: userId={}, attachmentId={}", userId, attachment.getId());
+                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                }
+            } catch (BusinessException e) {
+                if (uploadedAttachmentId != null) {
+                    attachmentService.delete(uploadedAttachmentId);
+                    log.info("审核失败，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
+                }
+                throw e;
+            } catch (Exception e) {
+                if (uploadedAttachmentId != null) {
+                    attachmentService.delete(uploadedAttachmentId);
+                    log.info("审核异常，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
+                }
+                log.error("饮食记录图片审核异常: userId={}, error={}", userId, e.getMessage(), e);
+                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+            }
         } else {
             Attachment defaultAttachment = new Attachment();
             defaultAttachment.setFileName("defult_food.png");
@@ -533,11 +601,70 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
             throw new BusinessException(403, "无权修改该饮食项");
         }
 
+        SysUser user = userService.getCurrentUser(userId);
+        String openid = user != null ? user.getOpenid() : null;
+
+        StringBuilder textContent = new StringBuilder();
+        if (itemParam.getFoodName() != null) {
+            textContent.append(itemParam.getFoodName()).append(" ");
+        }
+        if (itemParam.getFoodDesc() != null) {
+            textContent.append(itemParam.getFoodDesc()).append(" ");
+        }
+        if (itemParam.getRemark() != null) {
+            textContent.append(itemParam.getRemark()).append(" ");
+        }
+
+        if (textContent.length() > 0) {
+            try {
+                AuditSuggestEnum textAuditResult = contentAuditService.auditText(userId, openid, textContent.toString(), AuditSceneEnum.DIET_REMARK);
+                if (textAuditResult == AuditSuggestEnum.RISKY) {
+                    log.warn("饮食项文本审核需要人工审核: userId={}, itemId={}, contentLength={}", userId, itemParam.getId(), textContent.length());
+                    throw new BusinessException(400, "内容需要人工审核，请稍后重试");
+                } else if (textAuditResult == AuditSuggestEnum.BLOCK) {
+                    log.warn("饮食项文本审核未通过: userId={}, itemId={}, contentLength={}", userId, itemParam.getId(), textContent.length());
+                    throw new BusinessException(400, "内容包含违规信息，请修改后重新提交");
+                }
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("饮食项文本审核异常: userId={}, itemId={}, error={}", userId, itemParam.getId(), e.getMessage(), e);
+                throw new BusinessException(500, "内容审核服务暂时不可用，请稍后重试");
+            }
+        }
+
         String fileIdsStr = existingItem.getFileIds();
+        Long uploadedAttachmentId = null;
+
         if (file != null && !file.isEmpty()) {
             Attachment attachment = attachmentService.upload(file, userId, "diet/");
+            uploadedAttachmentId = attachment.getId();
             fileIdsStr = String.valueOf(attachment.getId());
             log.info("饮食项图片更新成功: itemId={}, attachmentId={}", itemParam.getId(), attachment.getId());
+
+            try {
+                AuditSuggestEnum imageAuditResult = contentAuditService.auditImages(userId, openid, java.util.Collections.singletonList(fileIdsStr), AuditSceneEnum.DIET_REMARK);
+                if (imageAuditResult == AuditSuggestEnum.RISKY) {
+                    log.warn("饮食项图片审核需要人工审核: userId={}, itemId={}, attachmentId={}", userId, itemParam.getId(), attachment.getId());
+                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
+                    log.warn("饮食项图片审核未通过: userId={}, itemId={}, attachmentId={}", userId, itemParam.getId(), attachment.getId());
+                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                }
+            } catch (BusinessException e) {
+                if (uploadedAttachmentId != null) {
+                    attachmentService.delete(uploadedAttachmentId);
+                    log.info("审核失败，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
+                }
+                throw e;
+            } catch (Exception e) {
+                if (uploadedAttachmentId != null) {
+                    attachmentService.delete(uploadedAttachmentId);
+                    log.info("审核异常，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
+                }
+                log.error("饮食项图片审核异常: userId={}, itemId={}, error={}", userId, itemParam.getId(), e.getMessage(), e);
+                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+            }
         }
 
         existingItem.setFoodName(itemParam.getFoodName());

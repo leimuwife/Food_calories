@@ -115,6 +115,19 @@
             <version>3.15.1</version>
         </dependency>
 
+        <!-- 敏感词核心DFA工具 -->
+        <dependency>
+            <groupId>com.github.houbb</groupId>
+            <artifactId>sensitive-word</artifactId>
+            <version>0.27.0</version>
+        </dependency>
+        <!-- 官方内置全套敏感词数据：辱骂、色情、广告、博彩、暴力等 -->
+        <dependency>
+            <groupId>com.github.houbb</groupId>
+            <artifactId>sensitive-word-data</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

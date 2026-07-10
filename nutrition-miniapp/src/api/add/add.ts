@@ -27,17 +27,14 @@ export async function addDietRecord(data: DietRecordParam, filePath?: string): P
             if (result.code === 200) {
               resolve(result.data)
             } else {
-              uni.showToast({ title: result.message || '保存失败', icon: 'none' })
               reject(new Error(result.message || '保存失败'))
             }
           } catch (e) {
-            uni.showToast({ title: '解析响应失败', icon: 'none' })
             reject(new Error('解析响应失败'))
           }
         },
         fail: (err) => {
-          uni.showToast({ title: '网络异常', icon: 'none' })
-          reject(err)
+          reject(new Error('网络异常，请检查网络连接'))
         },
       })
     })
@@ -97,17 +94,14 @@ export async function updateDietItem(data: DietRecordParam, filePath?: string): 
             if (result.code === 200) {
               resolve(result.data)
             } else {
-              uni.showToast({ title: result.message || '更新失败', icon: 'none' })
               reject(new Error(result.message || '更新失败'))
             }
           } catch (e) {
-            uni.showToast({ title: '解析响应失败', icon: 'none' })
             reject(new Error('解析响应失败'))
           }
         },
         fail: (err) => {
-          uni.showToast({ title: '网络异常', icon: 'none' })
-          reject(err)
+          reject(new Error('网络异常，请检查网络连接'))
         },
       })
     })

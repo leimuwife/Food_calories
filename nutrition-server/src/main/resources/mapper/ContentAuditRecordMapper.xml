@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nutrition.mapper.ContentAuditRecordMapper">
+
+    <select id="selectPendingReviewRecords" resultType="com.nutrition.entity.ContentAuditRecord">
+        SELECT id, user_id, openid, audit_type, content_text, image_url, scene, suggest, label,
+               audit_time, review_status, review_operator, review_result, review_remark,
+               create_time, update_time, delete_flag
+        FROM content_audit_record
+        WHERE review_status = 1
+          AND delete_flag = 0
+        ORDER BY audit_time DESC
+    </select>
+
+    <select id="selectByUserId" resultType="com.nutrition.entity.ContentAuditRecord">
+        SELECT id, user_id, openid, audit_type, content_text, image_url, scene, suggest, label,
+               audit_time, review_status, review_operator, review_result, review_remark,
+               create_time, update_time, delete_flag
+        FROM content_audit_record
+        WHERE user_id = #{userId}
+          AND delete_flag = 0
+        ORDER BY audit_time DESC
+    </select>
+
+    <select id="selectByReviewStatus" resultType="com.nutrition.entity.ContentAuditRecord">
+        SELECT id, user_id, openid, audit_type, content_text, image_url, scene, suggest, label,
+               audit_time, review_status, review_operator, review_result, review_remark,
+               create_time, update_time, delete_flag
+        FROM content_audit_record
+        WHERE review_status = #{reviewStatus}
+          AND delete_flag = 0
+        ORDER BY audit_time DESC
+    </select>
+
+</mapper>

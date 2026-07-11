@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,6 +29,9 @@ public class RedisCache {
     public static final String PREFIX_USER = "user:";
     public static final String PREFIX_DIET = "diet:";
     public static final String PREFIX_FOOD = "food:";
+    public static final String PREFIX_MOMENT_LIKE_USER = "moment:like:user:";
+    public static final String PREFIX_MOMENT_LIKE_COUNT = "moment:like:count:";
+    public static final String PREFIX_MOMENT_COMMENT_COUNT = "moment:comment:count:";
 
     /**
      * 构建黑名单缓存键
@@ -66,6 +72,127 @@ public class RedisCache {
      */
     public static String getFoodKey(String keyword) {
         return PREFIX_FOOD + keyword;
+    }
+
+    /**
+     * 构建动态点赞防重键
+     *
+     * @param feedId 动态ID
+     * @param userId 用户ID
+     * @return 缓存键
+     */
+    public static String getMomentLikeUserKey(Long feedId, Long userId) {
+        return PREFIX_MOMENT_LIKE_USER + feedId + "_" + userId;
+    }
+
+    /**
+     * 构建动态点赞计数键
+     *
+     * @param feedId 动态ID
+     * @return 缓存键
+     */
+    public static String getMomentLikeCountKey(Long feedId) {
+        return PREFIX_MOMENT_LIKE_COUNT + feedId;
+    }
+
+    /**
+     * 构建动态评论计数键
+     *
+     * @param feedId 动态ID
+     * @return 缓存键
+     */
+    public static String getMomentCommentCountKey(Long feedId) {
+        return PREFIX_MOMENT_COMMENT_COUNT + feedId;
+    }
+
+    /**
+     * 原子自增操作
+     *
+     * @param key 缓存键
+     * @return 自增后的值
+     */
+    public long increment(String key) {
+        try {
+            return stringRedisTemplate.opsForValue().increment(key);
+        } catch (Exception e) {
+            log.warn("Redis自增失败: key={}, error={}", key, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * 原子自减操作
+     *
+     * @param key 缓存键
+     * @return 自减后的值
+     */
+    public long decrement(String key) {
+        try {
+            return stringRedisTemplate.opsForValue().decrement(key);
+        } catch (Exception e) {
+            log.warn("Redis自减失败: key={}, error={}", key, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * SETNX 原子操作（键不存在时设置）
+     *
+     * @param key   缓存键
+     * @param value 缓存值
+     * @return 是否设置成功（true=键不存在，已设置；false=键已存在）
+     */
+    public boolean setIfAbsent(String key, String value) {
+        try {
+            return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, value));
+        } catch (Exception e) {
+            log.warn("Redis SETNX失败: key={}, error={}", key, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * SCAN 游标分批非阻塞扫描匹配的键（生产环境推荐使用）
+     * 底层基于 Redis SCAN 命令实现，不会阻塞 Redis 主线程
+     * 使用 try-with-resources 自动关闭游标释放连接
+     *
+     * @param pattern 键匹配模式（如 "moment:like:count:*"）
+     * @return 匹配的键集合（已去重）
+     */
+    public Set<String> scanKeys(String pattern) {
+        Set<String> result = new HashSet<>();
+        try (var cursor = stringRedisTemplate.executeWithStickyConnection(
+                connection -> connection.scan(ScanOptions.scanOptions()
+                        .match(pattern)
+                        .count(500)
+                        .build()))) {
+            while (cursor.hasNext()) {
+                result.add(new String(cursor.next()));
+            }
+        } catch (Exception e) {
+            log.error("Redis SCAN扫描失败: pattern={}, error={}", pattern, e.getMessage(), e);
+        }
+        return result;
+    }
+
+    /**
+     * 获取所有匹配的键（已废弃，生产环境禁止使用）
+     * KEYS命令会阻塞Redis主线程，键量大时会造成服务卡死
+     * 请使用 scanKeys() 方法替代
+     *
+     * @param pattern 键匹配模式
+     * @return 匹配的键集合
+     * @deprecated 推荐使用 scanKeys(String pattern)
+     */
+    @Deprecated
+    public java.util.Set<String> keys(String pattern) {
+        log.warn("警告：使用了已废弃的 keys() 方法，请改用 scanKeys()");
+        try {
+            return stringRedisTemplate.keys(pattern);
+        } catch (Exception e) {
+            log.warn("Redis keys扫描失败: pattern={}, error={}", pattern, e.getMessage());
+            return java.util.Collections.emptySet();
+        }
     }
 
     /**

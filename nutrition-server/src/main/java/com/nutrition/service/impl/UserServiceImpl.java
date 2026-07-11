@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nutrition.common.BusinessException;
+import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.param.RegisterParam;
@@ -43,10 +44,10 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUsername, param.getUsername()));
         if (user == null) {
-            throw new BusinessException(400, "用户名或密码错误");
+            throw new BusinessException(BizMsgEnum.USER_LOGIN_FAILED);
         }
         if (!passwordEncoder.matches(param.getPassword(), user.getPasswordHash())) {
-            throw new BusinessException(400, "用户名或密码错误");
+            throw new BusinessException(BizMsgEnum.USER_LOGIN_FAILED);
         }
 
         String token = jwtUtil.generateToken(String.valueOf(user.getId()), user.getUsername());
@@ -66,7 +67,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         long count = this.count(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUsername, param.getUsername()));
         if (count > 0) {
-            throw new BusinessException(400, "用户名已存在");
+            throw new BusinessException(BizMsgEnum.USER_NAME_EXIST);
         }
 
         SysUser user = new SysUser();
@@ -145,7 +146,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     public SysUser getCurrentUser(Long userId) {
         SysUser user = this.getById(userId);
         if (user == null) {
-            throw new BusinessException(404, "用户不存在");
+            throw new BusinessException(BizMsgEnum.USER_NOT_EXIST);
         }
         return user;
     }
@@ -175,7 +176,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     @Transactional
     public void updateProfile(Long userId, ProfileUpdateParam updateInfo) {
         SysUser user = this.getById(userId);
-        if (user == null) throw new BusinessException(404, "用户不存在");
+        if (user == null) throw new BusinessException(BizMsgEnum.USER_NOT_EXIST);
 
         if (StrUtil.isNotBlank(updateInfo.getNickname())) {
             user.setNickname(updateInfo.getNickname());

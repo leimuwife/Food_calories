@@ -40,6 +40,14 @@ public class WxConfigProperties {
     private int tokenRefreshSeconds = 60;
 
     /**
+     * 微信审核接口版本
+     * 取值：1 或 2，默认值为 1
+     * v1：旧版接口，openid 非必填，兼容测试占位 openid
+     * v2：新版接口，openid 必填，启用高精度风控模型与详细违规标签
+     */
+    private int auditVersion = 1;
+
+    /**
      * 初始化校验
      */
     @PostConstruct
@@ -54,6 +62,12 @@ public class WxConfigProperties {
         } else {
             log.info("微信小程序 AppSecret 加载成功");
         }
+
+        if (auditVersion != 1 && auditVersion != 2) {
+            log.warn("微信审核接口版本配置值 {} 无效，强制重置为 1", auditVersion);
+            this.auditVersion = 1;
+        }
+        log.info("微信审核接口版本配置: v{}", auditVersion);
     }
 
     /**
@@ -61,5 +75,14 @@ public class WxConfigProperties {
      */
     public boolean isConfigured() {
         return appId != null && !appId.isEmpty() && appSecret != null && !appSecret.isEmpty();
+    }
+
+    /**
+     * 判断是否使用 v2 版本审核接口
+     *
+     * @return true 使用 v2 版本，false 使用 v1 版本
+     */
+    public boolean isAuditVersionV2() {
+        return auditVersion == 2;
     }
 }

@@ -6,6 +6,7 @@ import com.nutrition.entity.Attachment;
 import com.nutrition.entity.SysUser;
 import com.nutrition.enums.AuditSceneEnum;
 import com.nutrition.enums.AuditSuggestEnum;
+import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.service.AttachmentService;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.UserService;
@@ -48,6 +49,10 @@ public class AttachmentController {
             userId = (Long) request.getAttribute("userId");
         }
 
+        if (userId == null) {
+            throw new BusinessException(BizMsgEnum.USER_NOT_LOGIN);
+        }
+
         Attachment attachment = attachmentService.upload(file, userId, prefix);
 
         if (isImageFile(file.getOriginalFilename())) {
@@ -57,18 +62,18 @@ public class AttachmentController {
                 if (imageAuditResult == AuditSuggestEnum.RISKY) {
                     log.warn("图片审核需要人工审核: userId={}, attachmentId={}", userId, attachment.getId());
                     attachmentService.delete(attachment.getId());
-                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_RISKY);
                 } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("图片审核未通过: userId={}, attachmentId={}", userId, attachment.getId());
                     attachmentService.delete(attachment.getId());
-                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_BLOCK);
                 }
             } catch (BusinessException e) {
                 throw e;
             } catch (Exception e) {
                 attachmentService.delete(attachment.getId());
                 log.error("图片审核异常: userId={}, attachmentId={}, error={}", userId, attachment.getId(), e.getMessage(), e);
-                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_SERVICE_UNAVAILABLE);
             }
         }
 
@@ -93,6 +98,10 @@ public class AttachmentController {
             userId = (Long) request.getAttribute("userId");
         }
 
+        if (userId == null) {
+            throw new BusinessException(BizMsgEnum.USER_NOT_LOGIN);
+        }
+
         List<Attachment> attachments = attachmentService.uploadBatch(files, userId, prefix);
         List<Long> uploadedAttachmentIds = new ArrayList<>();
         List<String> imageFileIds = new ArrayList<>();
@@ -114,13 +123,13 @@ public class AttachmentController {
                     for (Long id : uploadedAttachmentIds) {
                         attachmentService.delete(id);
                     }
-                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_RISKY);
                 } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("批量图片审核未通过: userId={}, attachmentIds={}", userId, imageFileIds);
                     for (Long id : uploadedAttachmentIds) {
                         attachmentService.delete(id);
                     }
-                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_BLOCK);
                 }
             } catch (BusinessException e) {
                 throw e;
@@ -129,7 +138,7 @@ public class AttachmentController {
                     attachmentService.delete(id);
                 }
                 log.error("批量图片审核异常: userId={}, attachmentIds={}, error={}", userId, uploadedAttachmentIds, e.getMessage(), e);
-                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_SERVICE_UNAVAILABLE);
             }
         }
 

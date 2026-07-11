@@ -149,6 +149,7 @@ export interface FeedItem {
   userAvatar: string | null
   content: string
   fileIds: string[]
+  imageUrls: string[]
   likeCount: number
   isLiked: boolean
   commentCount: number

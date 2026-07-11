@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { estimateCalories, addDietRecord, getDietItemDetail, updateDietItem } from '@/api/add/add'
-import type { MealType } from '@/api/types'
+import { MealType } from '@/api/types'
 
 interface FoodItem {
   id: number
@@ -238,8 +238,8 @@ async function handleSave() {
 
   try {
     const pages = getCurrentPages()
-    const prevPage = pages[pages.length - 2]
-    const mealType = (prevPage as any).$page?.route?.split('/').pop()?.replace('index', '') as MealType || 'snack'
+      const prevPage = pages.length > 1 ? pages[pages.length - 2] : null
+      const mealType = prevPage ? ((prevPage as any).$page?.route?.split('/').pop()?.replace('index', '') as MealType || MealType.SNACK) : MealType.SNACK
 
     const date = recordDate.value || (() => {
       const today = new Date()

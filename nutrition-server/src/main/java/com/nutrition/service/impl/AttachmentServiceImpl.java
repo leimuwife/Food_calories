@@ -179,4 +179,20 @@ public class AttachmentServiceImpl implements AttachmentService {
         }
         return fileName.substring(fileName.lastIndexOf("."));
     }
+
+    /**
+     * 根据ID列表批量查询附件
+     * 使用MyBatis-Plus的selectBatchIds方法实现IN查询
+     *
+     * @param idList 附件ID列表
+     * @return 附件列表
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<Attachment> batchGetByIds(List<Long> idList) {
+        if (idList == null || idList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return attachmentMapper.selectBatchIds(idList);
+    }
 }

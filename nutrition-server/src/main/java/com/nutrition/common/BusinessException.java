@@ -1,5 +1,6 @@
 package com.nutrition.common;
 
+import com.nutrition.enums.BizMsgEnum;
 import lombok.Getter;
 
 /**
@@ -18,5 +19,10 @@ public class BusinessException extends RuntimeException {
     public BusinessException(int code, String message) {
         super(message);
         this.code = code;
+    }
+
+    public BusinessException(BizMsgEnum msg) {
+        super(msg.getMessage());
+        this.code = msg.getCode();
     }
 }

@@ -24,11 +24,14 @@ public enum AuditSuggestEnum {
     }
 
     public static AuditSuggestEnum fromCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return PASS;
+        }
         for (AuditSuggestEnum suggest : values()) {
             if (suggest.code.equalsIgnoreCase(code)) {
                 return suggest;
             }
         }
-        throw new IllegalArgumentException("Invalid audit suggest code: " + code);
+        return PASS;
     }
 }

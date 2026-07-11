@@ -92,3 +92,4 @@ wx:
     app-secret: ${WX_MINI_APPSECRET:}
     token-expire-seconds: 7200
     token-refresh-seconds: 60
+    audit-version: ${WX_AUDIT_VERSION:1}

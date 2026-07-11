@@ -9,6 +9,7 @@ import com.nutrition.entity.DietRecord;
 import com.nutrition.entity.SysUser;
 import com.nutrition.enums.AuditSceneEnum;
 import com.nutrition.enums.AuditSuggestEnum;
+import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.enums.MealType;
 import com.nutrition.mapper.AttachmentMapper;
 import com.nutrition.mapper.DietItemMapper;
@@ -92,14 +93,14 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     public Long addDietRecord(Long userId, com.nutrition.param.DietRecordParam param, MultipartFile file) throws IOException {
         if (userId == null || userId <= 0) {
             log.error("添加饮食记录失败: 用户ID无效, userId={}", userId);
-            throw new BusinessException(400, "用户ID无效");
+            throw new BusinessException(BizMsgEnum.DIET_USER_ID_INVALID);
         }
 
         LocalDate recordDate = parseDate(param.getRecordDate(), userId);
         LocalDate today = LocalDate.now();
         if (recordDate.isAfter(today)) {
             log.error("添加饮食记录失败: 记录日期不能大于今天, userId={}, recordDate={}, today={}", userId, recordDate, today);
-            throw new BusinessException(400, "记录日期不能大于今天");
+            throw new BusinessException(BizMsgEnum.DIET_DATE_INVALID);
         }
 
         MealType mealType = parseMealType(param.getMealType(), userId);
@@ -125,16 +126,16 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                 AuditSuggestEnum textAuditResult = contentAuditService.auditText(userId, openid, allTextContent.toString(), AuditSceneEnum.DIET_REMARK);
                 if (textAuditResult == AuditSuggestEnum.RISKY) {
                     log.warn("饮食记录文本审核需要人工审核: userId={}, contentLength={}", userId, allTextContent.length());
-                    throw new BusinessException(400, "内容需要人工审核，请稍后重试");
+            throw new BusinessException(BizMsgEnum.AUDIT_CONTENT_RISKY);
                 } else if (textAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("饮食记录文本审核未通过: userId={}, contentLength={}", userId, allTextContent.length());
-                    throw new BusinessException(400, "内容包含违规信息，请修改后重新提交");
+            throw new BusinessException(BizMsgEnum.AUDIT_CONTENT_BLOCK);
                 }
             } catch (BusinessException e) {
                 throw e;
             } catch (Exception e) {
                 log.error("饮食记录文本审核异常: userId={}, error={}", userId, e.getMessage(), e);
-                throw new BusinessException(500, "内容审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_SERVICE_UNAVAILABLE);
             }
         }
 
@@ -160,10 +161,10 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                 AuditSuggestEnum imageAuditResult = contentAuditService.auditImages(userId, openid, java.util.Collections.singletonList(fileIdsStr), AuditSceneEnum.DIET_REMARK);
                 if (imageAuditResult == AuditSuggestEnum.RISKY) {
                     log.warn("饮食记录图片审核需要人工审核: userId={}, attachmentId={}", userId, attachment.getId());
-                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_RISKY);
                 } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("饮食记录图片审核未通过: userId={}, attachmentId={}", userId, attachment.getId());
-                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_BLOCK);
                 }
             } catch (BusinessException e) {
                 if (uploadedAttachmentId != null) {
@@ -177,7 +178,7 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                     log.info("审核异常，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
                 }
                 log.error("饮食记录图片审核异常: userId={}, error={}", userId, e.getMessage(), e);
-                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_SERVICE_UNAVAILABLE);
             }
         } else {
             Attachment defaultAttachment = new Attachment();
@@ -302,17 +303,17 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
      */
     private void validateParams(Long userId, LocalDate date) {
         if (userId == null || userId <= 0) {
-            throw new BusinessException(400, "用户ID无效");
+            throw new BusinessException(BizMsgEnum.DIET_USER_ID_INVALID);
         }
         if (date == null) {
-            throw new BusinessException(400, "查询日期不能为空");
+            throw new BusinessException(BizMsgEnum.DIET_QUERY_DATE_EMPTY);
         }
         LocalDate today = LocalDate.now();
         if (date.isAfter(today)) {
-            throw new BusinessException(400, "查询日期不能大于今天");
+            throw new BusinessException(BizMsgEnum.DIET_QUERY_DATE_INVALID);
         }
         if (date.isBefore(today.minusDays(MAX_QUERY_DAYS_OFFSET))) {
-            throw new BusinessException(400, "查询日期不能超过90天前");
+            throw new BusinessException(BizMsgEnum.DIET_QUERY_DATE_OUT_OF_RANGE);
         }
     }
 
@@ -531,11 +532,11 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
         DietRecord record = baseMapper.selectById(recordId);
         if (record == null) {
             log.error("删除饮食记录失败: 饮食记录不存在, userId={}, recordId={}", userId, recordId);
-            throw new BusinessException(404, "饮食记录不存在");
+            throw new BusinessException(BizMsgEnum.DIET_RECORD_NOT_EXIST);
         }
         if (!record.getUserId().equals(userId)) {
             log.error("删除饮食记录失败: 无权删除该记录, userId={}, recordId={}, recordUserId={}", userId, recordId, record.getUserId());
-            throw new BusinessException(403, "无权删除该记录");
+            throw new BusinessException(BizMsgEnum.DIET_NO_PERMISSION_DELETE);
         }
 
         LambdaQueryWrapper<DietItem> itemWrapper = new LambdaQueryWrapper<>();
@@ -553,13 +554,13 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
         DietItem item = dietItemMapper.selectById(itemId);
         if (item == null) {
             log.error("查询饮食项详情失败: 饮食项不存在, userId={}, itemId={}", userId, itemId);
-            throw new BusinessException(404, "饮食项不存在");
+            throw new BusinessException(BizMsgEnum.DIET_ITEM_NOT_EXIST);
         }
 
         DietRecord record = baseMapper.selectById(item.getRecordId());
         if (record == null || !record.getUserId().equals(userId)) {
             log.error("查询饮食项详情失败: 无权访问该饮食项, userId={}, itemId={}, recordId={}", userId, itemId, item.getRecordId());
-            throw new BusinessException(403, "无权访问该饮食项");
+            throw new BusinessException(BizMsgEnum.DIET_NO_PERMISSION_VIEW);
         }
 
         return convertToItemVO(item, null);
@@ -580,25 +581,25 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     public Long updateDietItem(Long userId, com.nutrition.param.DietRecordParam param, MultipartFile file) throws IOException {
         if (userId == null || userId <= 0) {
             log.error("更新饮食项失败: 用户ID无效, userId={}", userId);
-            throw new BusinessException(400, "用户ID无效");
+            throw new BusinessException(BizMsgEnum.DIET_USER_ID_INVALID);
         }
 
         com.nutrition.param.DietRecordParam.DietItemParam itemParam = param.getItems().get(0);
         if (itemParam.getId() == null) {
             log.error("更新饮食项失败: 饮食项ID不能为空, userId={}", userId);
-            throw new BusinessException(400, "饮食项ID不能为空");
+            throw new BusinessException(BizMsgEnum.DIET_ITEM_ID_EMPTY);
         }
 
         DietItem existingItem = dietItemMapper.selectById(itemParam.getId());
         if (existingItem == null) {
             log.error("更新饮食项失败: 饮食项不存在, userId={}, itemId={}", userId, itemParam.getId());
-            throw new BusinessException(404, "饮食项不存在");
+            throw new BusinessException(BizMsgEnum.DIET_ITEM_NOT_EXIST);
         }
 
         DietRecord record = baseMapper.selectById(existingItem.getRecordId());
         if (record == null || !record.getUserId().equals(userId)) {
             log.error("更新饮食项失败: 无权修改该饮食项, userId={}, itemId={}, recordUserId={}", userId, itemParam.getId(), record != null ? record.getUserId() : null);
-            throw new BusinessException(403, "无权修改该饮食项");
+            throw new BusinessException(BizMsgEnum.DIET_NO_PERMISSION_UPDATE);
         }
 
         SysUser user = userService.getCurrentUser(userId);
@@ -620,16 +621,16 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                 AuditSuggestEnum textAuditResult = contentAuditService.auditText(userId, openid, textContent.toString(), AuditSceneEnum.DIET_REMARK);
                 if (textAuditResult == AuditSuggestEnum.RISKY) {
                     log.warn("饮食项文本审核需要人工审核: userId={}, itemId={}, contentLength={}", userId, itemParam.getId(), textContent.length());
-                    throw new BusinessException(400, "内容需要人工审核，请稍后重试");
+            throw new BusinessException(BizMsgEnum.AUDIT_CONTENT_RISKY);
                 } else if (textAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("饮食项文本审核未通过: userId={}, itemId={}, contentLength={}", userId, itemParam.getId(), textContent.length());
-                    throw new BusinessException(400, "内容包含违规信息，请修改后重新提交");
+            throw new BusinessException(BizMsgEnum.AUDIT_CONTENT_BLOCK);
                 }
             } catch (BusinessException e) {
                 throw e;
             } catch (Exception e) {
                 log.error("饮食项文本审核异常: userId={}, itemId={}, error={}", userId, itemParam.getId(), e.getMessage(), e);
-                throw new BusinessException(500, "内容审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_SERVICE_UNAVAILABLE);
             }
         }
 
@@ -646,10 +647,10 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                 AuditSuggestEnum imageAuditResult = contentAuditService.auditImages(userId, openid, java.util.Collections.singletonList(fileIdsStr), AuditSceneEnum.DIET_REMARK);
                 if (imageAuditResult == AuditSuggestEnum.RISKY) {
                     log.warn("饮食项图片审核需要人工审核: userId={}, itemId={}, attachmentId={}", userId, itemParam.getId(), attachment.getId());
-                    throw new BusinessException(400, "图片需要人工审核，请稍后重试");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_RISKY);
                 } else if (imageAuditResult == AuditSuggestEnum.BLOCK) {
                     log.warn("饮食项图片审核未通过: userId={}, itemId={}, attachmentId={}", userId, itemParam.getId(), attachment.getId());
-                    throw new BusinessException(400, "图片包含违规内容，请更换图片后重新提交");
+                    throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_BLOCK);
                 }
             } catch (BusinessException e) {
                 if (uploadedAttachmentId != null) {
@@ -663,7 +664,7 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
                     log.info("审核异常，已清理上传的附件: attachmentId={}", uploadedAttachmentId);
                 }
                 log.error("饮食项图片审核异常: userId={}, itemId={}, error={}", userId, itemParam.getId(), e.getMessage(), e);
-                throw new BusinessException(500, "图片审核服务暂时不可用，请稍后重试");
+                throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_SERVICE_UNAVAILABLE);
             }
         }
 
@@ -707,7 +708,7 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
             return LocalDate.parse(dateStr);
         } catch (Exception e) {
             log.error("日期格式解析失败: userId={}, dateStr={}", userId, dateStr, e);
-            throw new BusinessException(400, "日期格式错误，应为YYYY-MM-DD");
+            throw new BusinessException(BizMsgEnum.DIET_DATE_FORMAT_ERROR);
         }
     }
 
@@ -723,7 +724,7 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
             return MealType.fromCode(mealTypeCode);
         } catch (Exception e) {
             log.error("餐次类型解析失败: userId={}, mealTypeCode={}", userId, mealTypeCode, e);
-            throw new BusinessException(400, "无效的餐次类型");
+            throw new BusinessException(BizMsgEnum.DIET_MEAL_TYPE_INVALID);
         }
     }
 }

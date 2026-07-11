@@ -42,14 +42,6 @@ public class JwtAuthFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        // 白名单放行
-        for (String white : WHITE_LIST) {
-            if (path.startsWith(white)) {
-                chain.doFilter(request, response);
-                return;
-            }
-        }
-
         // OPTIONS 预检放行
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
             chain.doFilter(request, response);
@@ -58,7 +50,21 @@ public class JwtAuthFilter implements Filter {
 
         // 从 Header 中获取 Token
         String authHeader = req.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        boolean hasToken = authHeader != null && authHeader.startsWith("Bearer ");
+
+        // 白名单路径：有 token 则尝试解析，无 token 直接放行
+        for (String white : WHITE_LIST) {
+            if (path.startsWith(white)) {
+                if (hasToken) {
+                    tryParseToken(req, authHeader);
+                }
+                chain.doFilter(request, response);
+                return;
+            }
+        }
+
+        // 非白名单路径：必须有有效 token
+        if (!hasToken) {
             resp.setStatus(401);
             resp.setContentType("application/json;charset=UTF-8");
             resp.getWriter().write("{\"code\":401,\"message\":\"未登录或Token缺失\",\"data\":null}");
@@ -90,6 +96,25 @@ public class JwtAuthFilter implements Filter {
         req.setAttribute("userId", userId);
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * 尝试解析 Token，失败不拦截
+     */
+    private void tryParseToken(HttpServletRequest req, String authHeader) {
+        try {
+            String token = authHeader.substring(7);
+            String blacklistKey = RedisCache.getBlacklistKey(token);
+            if (redisCache.exists(blacklistKey)) {
+                return;
+            }
+            if (jwtUtil.validateToken(token)) {
+                Long userId = jwtUtil.getUserIdFromToken(token);
+                req.setAttribute("userId", userId);
+            }
+        } catch (Exception e) {
+            log.debug("白名单路径Token解析失败，继续放行: {}", e.getMessage());
+        }
     }
 
     /**

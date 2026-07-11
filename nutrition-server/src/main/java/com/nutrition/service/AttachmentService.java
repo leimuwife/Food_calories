@@ -23,4 +23,13 @@ public interface AttachmentService {
     boolean delete(Long id);
 
     void deleteBatch(List<Long> ids);
+
+    /**
+     * 根据ID列表批量查询附件
+     * 使用IN查询一次性获取全部附件信息，仅1次DB请求
+     *
+     * @param idList 附件ID列表
+     * @return 附件列表
+     */
+    List<Attachment> batchGetByIds(List<Long> idList);
 }

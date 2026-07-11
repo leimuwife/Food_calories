@@ -17,15 +17,24 @@ export function publishFeed(data: FeedPublishParam) {
   })
 }
 
+export interface FeedLikeResult {
+  isLiked: boolean
+  likeCount: number
+}
+
+export interface FeedCommentResult {
+  commentCount: number
+}
+
 export function toggleFeedLike(feedId: number) {
-  return request({
+  return request<FeedLikeResult>({
     url: `/api/feed/${feedId}/like`,
     method: 'POST',
   })
 }
 
 export function addFeedComment(feedId: number, content: string) {
-  return request({
+  return request<FeedCommentResult>({
     url: `/api/feed/${feedId}/comment`,
     method: 'POST',
     data: { content },

@@ -3,6 +3,7 @@ package com.nutrition.service.impl;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nutrition.common.BusinessException;
+import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.entity.CheckinRecord;
 import com.nutrition.mapper.CheckinRecordMapper;
 import com.nutrition.service.CheckinRecordService;
@@ -63,7 +64,7 @@ public class CheckinRecordServiceImpl extends ServiceImpl<CheckinRecordMapper, C
         CheckinRecord record = getBaseMapper().selectByUserIdAndDate(userId, date);
         if (record == null) {
             log.error("取消打卡失败: 用户{}在{}没有打卡记录", userId, date);
-            throw new BusinessException(404, "打卡记录不存在");
+            throw new BusinessException(BizMsgEnum.CHECKIN_RECORD_NOT_EXIST);
         }
 
         LambdaUpdateWrapper<CheckinRecord> wrapper = new LambdaUpdateWrapper<>();

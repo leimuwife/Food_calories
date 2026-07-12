@@ -54,23 +54,6 @@
           <view class="form-item">
             <view class="form-label">
               <svg viewBox="0 0 48 48" class="label-icon">
-                <rect x="8" y="12" width="32" height="28" rx="4" fill="#FFB6C1"/>
-                <path d="M16 20 L32 20" stroke="#FF69B4" stroke-width="2" fill="none"/>
-                <path d="M16 26 L28 26" stroke="#FF69B4" stroke-width="2" fill="none"/>
-              </svg>
-              <text class="label-text">邮箱</text>
-            </view>
-            <input 
-              v-model="email" 
-              class="form-input" 
-              placeholder="请输入邮箱" 
-              type="text"
-            />
-          </view>
-
-          <view class="form-item">
-            <view class="form-label">
-              <svg viewBox="0 0 48 48" class="label-icon">
                 <circle cx="24" cy="24" r="20" fill="#FFB6C1"/>
                 <path d="M20 18 L28 18 L28 28 L20 28 Z" stroke="#FF69B4" stroke-width="2" fill="none"/>
                 <path d="M20 32 L28 32" stroke="#FF69B4" stroke-width="2" fill="none"/>
@@ -130,12 +113,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { updateProfile } from '@/api/wode/wode'
+import { updateProfile, getProfile } from '@/api/wode/wode'
 import { uploadAttachment, getAttachmentUrl } from '@/api'
 
 const userStore = useUserStore()
 const nickname = ref('')
-const email = ref('')
 const feedback = ref('')
 const avatarFileId = ref<string | null>(null)
 const tempAvatarUrl = ref('')
@@ -145,17 +127,24 @@ const avatarUrl = computed(() => {
   if (tempAvatarUrl.value) {
     return tempAvatarUrl.value
   }
-  if (!userStore.userInfo?.fileIds) {
+  const user = userStore.userInfo
+  if (user?.avatarUrl) {
+    return user.avatarUrl
+  }
+  if (avatarFileId.value) {
+    return getAttachmentUrl(avatarFileId.value)
+  }
+  if (!user?.fileIds) {
     return getDefaultAvatar()
   }
   let firstId: string | null = null
   try {
-    const ids = JSON.parse(userStore.userInfo.fileIds)
+    const ids = JSON.parse(user.fileIds)
     if (Array.isArray(ids) && ids.length > 0) {
       firstId = String(ids[0])
     }
   } catch {
-    const parts = userStore.userInfo.fileIds.split(',')
+    const parts = user.fileIds.split(',')
     if (parts.length > 0) {
       firstId = parts[0].trim()
     }
@@ -165,12 +154,6 @@ const avatarUrl = computed(() => {
 
 function getDefaultAvatar(): string {
   return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="45" fill="%23FFB6C1"/%3E%3Ccircle cx="38" cy="42" r="6" fill="%23333"/%3E%3Ccircle cx="62" cy="42" r="6" fill="%23333"/%3E%3Ccircle cx="39" cy="41" r="2" fill="%23fff"/%3E%3Ccircle cx="63" cy="41" r="2" fill="%23fff"/%3E%3Cellipse cx="50" cy="56" rx="5" ry="3" fill="%23FF69B4"/%3E%3Cpath d="M42 64 Q50 70 58 64" stroke="%23333" stroke-width="2" fill="none"/%3E%3Ccircle cx="28" cy="35" r="8" fill="%23FFB6C1"/%3E%3Ccircle cx="72" cy="35" r="8" fill="%23FFB6C1"/%3E%3Cpath d="M20 35 Q28 25 36 35" stroke="%23FFB6C1" stroke-width="3" fill="none"/%3E%3Cpath d="M64 35 Q72 25 80 35" stroke="%23FFB6C1" stroke-width="3" fill="none"/%3E%3C/svg%3E'
-}
-
-function validateEmail(emailStr: string): boolean {
-  if (!emailStr) return true
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return regex.test(emailStr)
 }
 
 function chooseAvatar() {
@@ -210,21 +193,16 @@ async function saveProfile() {
     return
   }
 
-  if (email.value && !validateEmail(email.value)) {
-    uni.showToast({ title: '请输入正确的邮箱格式', icon: 'none' })
-    return
-  }
-
   const updateData: any = {
     nickname: nickname.value.trim()
   }
 
-  if (email.value) {
-    updateData.email = email.value.trim()
-  }
-
   if (avatarFileId.value) {
     updateData.fileIds = JSON.stringify([avatarFileId.value])
+  }
+
+  if (feedback.value.trim()) {
+    updateData.feedbackContent = feedback.value.trim()
   }
 
   try {
@@ -234,7 +212,6 @@ async function saveProfile() {
     if (userInfo) {
       userStore.updateUser({
         nickname: updateData.nickname,
-        email: updateData.email || userInfo.email,
         fileIds: updateData.fileIds || userInfo.fileIds
       })
     }
@@ -254,12 +231,37 @@ function goBack() {
   uni.navigateBack({ delta: 1 })
 }
 
-onMounted(() => {
-  const user = userStore.userInfo
-  if (user) {
-    nickname.value = user.nickname || ''
-    email.value = user.email || ''
+async function fetchUserInfo() {
+  try {
+    const res = await getProfile()
+    if (res.data) {
+      userStore.updateUser(res.data)
+      nickname.value = res.data.nickname || ''
+      if (res.data.fileIds) {
+        try {
+          const ids = JSON.parse(res.data.fileIds)
+          if (Array.isArray(ids) && ids.length > 0) {
+            avatarFileId.value = String(ids[0])
+          }
+        } catch {
+          const parts = res.data.fileIds.split(',')
+          if (parts.length > 0) {
+            avatarFileId.value = parts[0].trim()
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('获取用户信息失败:', e)
+    const user = userStore.userInfo
+    if (user) {
+      nickname.value = user.nickname || ''
+    }
   }
+}
+
+onMounted(() => {
+  fetchUserInfo()
 })
 </script>
 

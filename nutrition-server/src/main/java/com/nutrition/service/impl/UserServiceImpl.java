@@ -4,12 +4,18 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nutrition.common.BusinessException;
+import com.nutrition.enums.AuditSceneEnum;
+import com.nutrition.enums.AuditSuggestEnum;
 import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.param.RegisterParam;
+import com.nutrition.entity.Attachment;
 import com.nutrition.entity.SysUser;
 import com.nutrition.mapper.SysUserMapper;
+import com.nutrition.service.AttachmentService;
+import com.nutrition.service.ContentAuditService;
+import com.nutrition.service.UserFeedbackService;
 import com.nutrition.service.UserService;
 import com.nutrition.util.JwtUtil;
 import com.nutrition.util.RedisCache;
@@ -21,23 +27,27 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 用户业务层实现类
  * 负责用户注册、登录、个人信息管理等功能
  * 支持Redis缓存用户信息，减少数据库查询
+ * 个人信息编辑包含内容安全审核流程
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements UserService {
 
-    
-
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RedisCache redisCache;
+    private final ContentAuditService contentAuditService;
+    private final UserFeedbackService userFeedbackService;
+    private final AttachmentService attachmentService;
 
     @Override
     public LoginResultVO login(LoginParam param) {
@@ -119,19 +129,16 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
             case "test_code_user1" -> {
                 user.setNickname("张三");
                 user.setUsername("zhangsan");
-                user.setEmail("zhangsan@example.com");
                 yield user;
             }
             case "test_code_user2" -> {
                 user.setNickname("李四");
                 user.setUsername("lisi");
-                user.setEmail("lisi@example.com");
                 yield user;
             }
             case "test_code_nutritionist" -> {
                 user.setNickname("小张营养师");
                 user.setUsername("nutritionist_zhang");
-                user.setEmail("zhang@nutrition.com");
                 yield user;
             }
             default -> {
@@ -162,6 +169,12 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         UserVO cachedVO = redisCache.get(cacheKey, UserVO.class);
         if (cachedVO != null) {
             log.debug("用户{}信息命中缓存", userId);
+            if (cachedVO.getAvatarUrl() == null && cachedVO.getFileIds() != null) {
+                log.debug("用户{}缓存中没有avatarUrl，尝试解析", userId);
+                String avatarUrl = resolveAvatarUrl(cachedVO.getFileIds());
+                cachedVO.setAvatarUrl(avatarUrl);
+                cacheUser(userId, cachedVO);
+            }
             return cachedVO;
         }
 
@@ -172,6 +185,17 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         return userVO;
     }
 
+    /**
+     * 更新用户个人信息（含内容审核）
+     * <p>审核流程：</p>
+     * <ul>
+     *   <li>昵称：进行文本安全审核</li>
+     *   <li>头像：进行图片安全审核</li>
+     *   <li>反馈内容：进行文本安全审核后保存到反馈表</li>
+     * </ul>
+     * @param userId 用户ID
+     * @param updateInfo 更新信息参数
+     */
     @Override
     @Transactional
     public void updateProfile(Long userId, ProfileUpdateParam updateInfo) {
@@ -179,12 +203,27 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         if (user == null) throw new BusinessException(BizMsgEnum.USER_NOT_EXIST);
 
         if (StrUtil.isNotBlank(updateInfo.getNickname())) {
+            AuditSuggestEnum nicknameAudit = contentAuditService.auditText(userId, user.getOpenid(), updateInfo.getNickname(), AuditSceneEnum.PROFILE);
+            if (AuditSuggestEnum.BLOCK.equals(nicknameAudit)) {
+                throw new BusinessException(BizMsgEnum.AUDIT_TEXT_BLOCKED);
+            }
             user.setNickname(updateInfo.getNickname());
         }
-        if (StrUtil.isNotBlank(updateInfo.getEmail())) {
-            user.setEmail(updateInfo.getEmail());
+
+        if (StrUtil.isNotBlank(updateInfo.getFileIds())) {
+            List<String> fileIdList = Arrays.asList(updateInfo.getFileIds().replace("[", "").replace("]", "").replace("\"", "").split(","));
+            AuditSuggestEnum imageAudit = contentAuditService.auditImages(userId, user.getOpenid(), fileIdList, AuditSceneEnum.PROFILE);
+            if (AuditSuggestEnum.BLOCK.equals(imageAudit)) {
+                throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_BLOCK);
+            }
+            user.setFileIds(updateInfo.getFileIds());
         }
+
         this.updateById(user);
+
+        if (StrUtil.isNotBlank(updateInfo.getFeedbackContent())) {
+            userFeedbackService.submitFeedback(userId, updateInfo.getFeedbackContent());
+        }
 
         clearUserCache(userId);
         log.debug("用户{}信息已更新，缓存已清除", userId);
@@ -196,8 +235,46 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         vo.setId(user.getId());
         vo.setOpenid(user.getOpenid());
         vo.setNickname(user.getNickname());
-        vo.setEmail(user.getEmail());
+        vo.setFileIds(user.getFileIds());
+        vo.setAvatarUrl(resolveAvatarUrl(user.getFileIds()));
         return vo;
+    }
+
+    /**
+     * 解析头像URL
+     * @param fileIds 附件ID的JSON字符串
+     * @return 头像完整URL，无头像时返回null
+     */
+    private String resolveAvatarUrl(String fileIds) {
+        if (StrUtil.isBlank(fileIds)) {
+            log.debug("解析头像URL: fileIds为空");
+            return null;
+        }
+        try {
+            String cleanIds = fileIds.replace("[", "").replace("]", "").replace("\"", "").trim();
+            if (StrUtil.isBlank(cleanIds)) {
+                log.debug("解析头像URL: 清理后fileIds为空");
+                return null;
+            }
+            String firstId = cleanIds.split(",")[0].trim();
+            if (StrUtil.isBlank(firstId)) {
+                log.debug("解析头像URL: 第一个ID为空");
+                return null;
+            }
+            Long id = Long.parseLong(firstId);
+            log.debug("解析头像URL: fileIds={}, 解析出ID={}", fileIds, id);
+            Attachment attachment = attachmentService.getById(id);
+            if (attachment == null) {
+                log.warn("解析头像URL: 附件不存在, id={}", id);
+                return null;
+            }
+            String url = attachment.getFileUrl();
+            log.debug("解析头像URL: 附件ID={}, fileUrl={}", id, url);
+            return url;
+        } catch (Exception e) {
+            log.warn("解析头像URL失败: fileIds={}, error={}", fileIds, e.getMessage());
+            return null;
+        }
     }
 
     /**

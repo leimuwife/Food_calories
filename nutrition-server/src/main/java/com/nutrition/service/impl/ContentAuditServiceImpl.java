@@ -17,6 +17,7 @@ import com.nutrition.service.AttachmentService;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.util.WxTokenUtil;
 import com.github.houbb.sensitive.word.core.SensitiveWordHelper;
+import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -717,7 +718,7 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
                                              AuditSceneEnum scene, AuditSuggestEnum suggest, String label) {
         ContentAuditRecord record = new ContentAuditRecord();
         record.setUserId(userId);
-        record.setOpenid(openid);
+        record.setOpenid(StrUtil.isNotBlank(openid) ? openid : "");
         record.setAuditType("text".equals(auditType) ? 1 : 2);
         record.setContentText(contentText);
         record.setFileIds(fileIds);

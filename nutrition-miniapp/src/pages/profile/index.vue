@@ -5,7 +5,6 @@
       <image class="avatar" :src="getAvatarUrl(userStore.userInfo?.fileIds)" mode="aspectFill" />
       <view class="profile-info">
         <text class="profile-name">{{ userStore.userInfo?.nickname || '未登录' }}</text>
-        <text class="profile-email">{{ userStore.userInfo?.email || '点击登录体验完整功能' }}</text>
       </view>
       <u-icon name="arrow-right" size="16" color="#C0C4CC" />
     </view>
@@ -26,28 +25,6 @@
       />
     </view>
 
-    <!-- 营养目标设置 -->
-    <view class="card">
-      <text class="card-title">每日营养目标</text>
-      <view class="goal-grid">
-        <view class="goal-item" @tap="editGoal('calorieGoal', '热量目标(kcal)', userStore.userInfo?.dailyCalorieGoal || 2000)">
-          <text class="goal-value">{{ userStore.userInfo?.dailyCalorieGoal || 2000 }}</text>
-          <text class="goal-label">热量(kcal)</text>
-        </view>
-        <view class="goal-item" @tap="editGoal('proteinGoal', '蛋白质目标(g)', userStore.userInfo?.dailyProteinGoal || 60)">
-          <text class="goal-value protein-color">{{ userStore.userInfo?.dailyProteinGoal || 60 }}</text>
-          <text class="goal-label">蛋白质(g)</text>
-        </view>
-        <view class="goal-item" @tap="editGoal('fatGoal', '脂肪目标(g)', userStore.userInfo?.dailyFatGoal || 55)">
-          <text class="goal-value fat-color">{{ userStore.userInfo?.dailyFatGoal || 55 }}</text>
-          <text class="goal-label">脂肪(g)</text>
-        </view>
-        <view class="goal-item" @tap="editGoal('carbsGoal', '碳水目标(g)', userStore.userInfo?.dailyCarbsGoal || 250)">
-          <text class="goal-value carbs-color">{{ userStore.userInfo?.dailyCarbsGoal || 250 }}</text>
-          <text class="goal-label">碳水(g)</text>
-        </view>
-      </view>
-    </view>
 
     <!-- 功能列表 -->
     <view class="card menu-list">
@@ -264,7 +241,6 @@ function handleLogout() {
 .avatar { width: 100rpx; height: 100rpx; border-radius: 50%; border: 3rpx solid #FFFFFF; }
 .profile-info { flex: 1; }
 .profile-name { font-size: 34rpx; font-weight: 600; color: #FFFFFF; display: block; }
-.profile-email { font-size: 24rpx; color: rgba(255,255,255,0.8); margin-top: 4rpx; display: block; }
 .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 8rpx; }
 .goal-item { background: #F5F7FA; border-radius: 16rpx; padding: 24rpx; text-align: center; }
 .goal-value { font-size: 40rpx; font-weight: 700; color: #7EC8A0; display: block; }

@@ -14,5 +14,9 @@ public class UserVO {
 
     private String nickname;
 
-    private String email;
+    /** 头像附件ID */
+    private String fileIds;
+
+    /** 头像完整URL */
+    private String avatarUrl;
 }

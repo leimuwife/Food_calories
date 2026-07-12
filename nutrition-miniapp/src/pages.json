@@ -138,24 +138,17 @@
       }
     },
     {
+      "path": "pages/wode/feedback",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "问题反馈历史"
+      }
+    },
+    {
       "path": "pages/yingyangshi/index",
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "小张营养师"
-      }
-    },
-    {
-      "path": "pages/history/index",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "饮食历史记录"
-      }
-    },
-    {
-      "path": "pages/history/detail",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "饮食记录详情"
       }
     }
   ],

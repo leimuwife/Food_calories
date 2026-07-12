@@ -24,6 +24,7 @@ public enum BizMsgEnum {
     AUDIT_IMAGE_SERVICE_UNAVAILABLE(500, "图片审核服务暂时不可用，请稍后重试"),
     AUDIT_WECHAT_ERROR(500, "微信审核接口调用失败"),
     AUDIT_IMAGE_DOWNLOAD_FAILED(500, "图片下载失败，请稍后重试"),
+    AUDIT_TEXT_BLOCKED(400, "文本内容审核未通过，请修改后重新提交"),
 
     // ========== 动态模块 (FEED) ==========
     FEED_NOT_BIND_WECHAT(400, "请先绑定微信账号"),

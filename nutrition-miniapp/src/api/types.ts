@@ -16,7 +16,7 @@ export interface UserVO {
   openid: string
   nickname: string
   fileIds: string | null
-  email: string
+  avatarUrl: string | null
   dailyCalorieGoal: number
   dailyProteinGoal: number
   dailyFatGoal: number
@@ -131,7 +131,6 @@ export type NutritionGoalUpdateParam = GoalUpdateParam
 export interface ProfileUpdateParam {
   nickname?: string
   fileIds?: string
-  email?: string
 }
 
 export interface FeedComment {
@@ -185,4 +184,27 @@ export interface NutritionistChatParam {
 
 export interface NutritionistChatResult {
   message: ChatMessage
+}
+
+export interface UserFeedback {
+  id: number
+  userId: number
+  feedbackContent: string
+  feedbackStatus: number
+  feedbackStatusDesc?: string
+  adminReply?: string
+  createTime: string
+  updateTime: string
+}
+
+export enum FeedbackStatus {
+  PENDING = 0,
+  PROCESSING = 1,
+  COMPLETED = 2
+}
+
+export const FeedbackStatusMap: Record<number, string> = {
+  [FeedbackStatus.PENDING]: '待处理',
+  [FeedbackStatus.PROCESSING]: '处理中',
+  [FeedbackStatus.COMPLETED]: '已完结'
 }

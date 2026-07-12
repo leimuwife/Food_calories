@@ -26,36 +26,6 @@
     </view>
 
     <view class="search-entry-card">
-      <view class="search-row">
-        <view class="search-input-wrap">
-          <svg viewBox="0 0 48 48" class="cat-paw-icon">
-            <circle cx="24" cy="30" r="8" fill="#FFB6C1"/>
-            <circle cx="14" cy="22" r="5" fill="#FFB6C1"/>
-            <circle cx="34" cy="22" r="5" fill="#FFB6C1"/>
-            <circle cx="24" cy="16" r="5" fill="#FFB6C1"/>
-            <circle cx="18" cy="30" r="3" fill="#FF69B4"/>
-            <circle cx="30" cy="30" r="3" fill="#FF69B4"/>
-            <circle cx="24" cy="22" r="3" fill="#FF69B4"/>
-            <circle cx="16" cy="24" r="2" fill="#FF69B4"/>
-            <circle cx="32" cy="24" r="2" fill="#FF69B4"/>
-          </svg>
-          <text class="search-placeholder">搜索食物</text>
-        </view>
-        <view class="history-btn" @tap="handleHistory">
-          <svg viewBox="0 0 48 48" class="cat-lay-icon">
-            <ellipse cx="24" cy="36" rx="18" ry="8" fill="#FFB6C1"/>
-            <circle cx="18" cy="22" r="10" fill="#FFB6C1"/>
-            <circle cx="30" cy="22" r="10" fill="#FFB6C1"/>
-            <circle cx="24" cy="32" r="6" fill="#FFB6C1"/>
-            <circle cx="16" cy="20" r="2" fill="#333"/>
-            <circle cx="32" cy="20" r="2" fill="#333"/>
-            <path d="M24 26 Q22 30 24 32 Q26 30 24 26" stroke="#333" stroke-width="1.5" fill="none"/>
-            <ellipse cx="12" cy="26" rx="3" ry="4" fill="#FFC0CB"/>
-            <ellipse cx="36" cy="26" rx="3" ry="4" fill="#FFC0CB"/>
-          </svg>
-          <text class="history-text">历史记录</text>
-        </view>
-      </view>
       <view class="quick-entry">
         <view v-for="item in quickItems" :key="item.key" class="entry-item" @tap="handleQuickTap(item.key)">
           <view class="entry-icon-wrap">
@@ -218,7 +188,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getTodayRecords, searchFood } from '@/api/shouye'
+import { getTodayRecords } from '@/api/shouye'
 import { getToday } from '@/utils'
 
 const userStore = useUserStore()
@@ -303,22 +273,8 @@ async function loadTodayData() {
   }
 }
 
-async function handleSearch(keyword: string) {
-  if (!keyword.trim()) return
-  try {
-    const res = await searchFood(keyword)
-    console.log('搜索结果:', res.data.list)
-  } catch (e) {
-    console.error('搜索失败:', e)
-  }
-}
-
 function handleCheckin() {
   uni.navigateTo({ url: '/pages/daka/index' })
-}
-
-function handleHistory() {
-  uni.navigateTo({ url: '/pages/history/index' })
 }
 
 function handleQuickTap(key: string) {
@@ -457,54 +413,6 @@ onMounted(() => {
   margin-bottom: 24rpx;
   box-shadow: 0 8rpx 24rpx rgba(255, 105, 180, 0.1);
   border: 2rpx solid rgba(255, 182, 193, 0.3);
-}
-
-.search-row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 32rpx;
-}
-
-.search-input-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background: #FFF9FA;
-  border-radius: 48rpx;
-  padding: 24rpx 32rpx;
-  border: 2rpx solid rgba(255, 182, 193, 0.4);
-}
-
-.cat-paw-icon {
-  width: 40rpx;
-  height: 40rpx;
-}
-
-.search-placeholder {
-  font-size: 28rpx;
-  color: #B8B8B8;
-  margin-left: 20rpx;
-}
-
-.history-btn {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 20rpx 28rpx;
-  background: rgba(255, 182, 193, 0.15);
-  border-radius: 32rpx;
-  border: 2rpx solid rgba(255, 182, 193, 0.3);
-}
-
-.cat-lay-icon {
-  width: 40rpx;
-  height: 40rpx;
-}
-
-.history-text {
-  font-size: 26rpx;
-  color: #FF69B4;
 }
 
 .quick-entry {

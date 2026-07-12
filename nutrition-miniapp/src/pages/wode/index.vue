@@ -22,22 +22,6 @@
       </view>
 
       <view class="menu-card">
-        <view class="menu-item" @tap="goToEdit">
-          <view class="menu-icon-wrap">
-            <svg viewBox="0 0 48 48" class="menu-icon">
-              <rect x="8" y="12" width="32" height="28" rx="4" fill="#FFB6C1"/>
-              <path d="M16 20 L32 20" stroke="#FF69B4" stroke-width="2" fill="none"/>
-              <path d="M16 26 L28 26" stroke="#FF69B4" stroke-width="2" fill="none"/>
-              <path d="M20 32 L24 32" stroke="#FF69B4" stroke-width="2" fill="none"/>
-            </svg>
-          </view>
-          <text class="menu-text">绑定邮箱</text>
-          <text class="menu-value">{{ userInfo.email || '未设置' }}</text>
-          <svg viewBox="0 0 48 48" class="menu-arrow">
-            <path d="M18 20 L24 26 L18 32" stroke="#FFB6C1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </view>
-
         <view class="menu-item" @tap="goToFeedback">
           <view class="menu-icon-wrap">
             <svg viewBox="0 0 48 48" class="menu-icon">
@@ -46,7 +30,7 @@
               <path d="M20 32 L28 32" stroke="#FF69B4" stroke-width="2" fill="none"/>
             </svg>
           </view>
-          <text class="menu-text">问题反馈</text>
+          <text class="menu-text">问题反馈历史</text>
           <svg viewBox="0 0 48 48" class="menu-arrow">
             <path d="M18 20 L24 26 L18 32" stroke="#FFB6C1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -131,6 +115,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getAttachmentUrl } from '@/api'
+import { getProfile } from '@/api/wode/wode'
 
 const userStore = useUserStore()
 const isRefreshing = ref(false)
@@ -143,18 +128,20 @@ const userInfo = computed(() => {
   if (!user) {
     return {
       nickname: generateDefaultNickname(),
-      email: '',
       fileIds: null
     }
   }
   return {
     nickname: user.nickname || generateDefaultNickname(),
-    email: user.email || '',
     fileIds: user.fileIds || null
   }
 })
 
 const avatarUrl = computed(() => {
+  const user = userStore.userInfo
+  if (user?.avatarUrl) {
+    return user.avatarUrl
+  }
   if (!userInfo.value.fileIds) {
     return getDefaultAvatar()
   }
@@ -170,7 +157,7 @@ const avatarUrl = computed(() => {
       firstId = parts[0].trim()
     }
   }
-  return firstId ? getAttachmentUrl(Number(firstId)) : getDefaultAvatar()
+  return firstId ? getAttachmentUrl(String(firstId)) : getDefaultAvatar()
 })
 
 function generateDefaultNickname(): string {
@@ -187,7 +174,7 @@ function goToEdit() {
 }
 
 function goToFeedback() {
-  uni.navigateTo({ url: '/pages/wode/edit?tab=feedback' })
+  uni.navigateTo({ url: '/pages/wode/feedback' })
 }
 
 function showAbout() {
@@ -206,15 +193,28 @@ function closePopup() {
   showPopup.value = false
 }
 
-function onRefresh() {
-  isRefreshing.value = true
-  setTimeout(() => {
-    isRefreshing.value = false
-    uni.showToast({ title: '刷新成功', icon: 'success' })
-  }, 1000)
+async function fetchUserInfo() {
+  try {
+    const res = await getProfile()
+    if (res.data) {
+      userStore.updateUser(res.data)
+    }
+  } catch (e) {
+    console.error('获取用户信息失败:', e)
+  }
 }
 
-onMounted(() => {})
+function onRefresh() {
+  isRefreshing.value = true
+  fetchUserInfo().finally(() => {
+    isRefreshing.value = false
+    uni.showToast({ title: '刷新成功', icon: 'success' })
+  })
+}
+
+onMounted(() => {
+  fetchUserInfo()
+})
 </script>
 
 <style lang="scss" scoped>

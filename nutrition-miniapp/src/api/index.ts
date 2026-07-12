@@ -22,6 +22,7 @@ import {
 import {
   updateProfile,
   updateNutritionGoal,
+  getFeedbackList,
 } from './wode/wode'
 
 import {
@@ -178,6 +179,7 @@ export default {
   register,
   updateProfile,
   updateNutritionGoal,
+  getFeedbackList,
   addDietRecord,
   getTodayRecords,
   getRecordsByRange,

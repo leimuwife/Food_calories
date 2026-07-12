@@ -23,10 +23,6 @@ public class SysUser extends Common {
     @Schema(description = "昵称")
     private String nickname;
 
-    /** 邮箱 */
-    @Schema(description = "邮箱")
-    private String email;
-
     /** 用户名（账号登录） */
     @Schema(description = "用户名")
     private String username;
@@ -34,4 +30,8 @@ public class SysUser extends Common {
     /** 密码哈希 */
     @Schema(description = "密码哈希")
     private String passwordHash;
+
+    /** 关联附件表中的id */
+    @Schema(description = "关联附件表中的id")
+    private String fileIds;
 }

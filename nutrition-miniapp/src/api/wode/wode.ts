@@ -1,5 +1,12 @@
 import request from '../request'
-import type { ProfileUpdateParam } from '../types'
+import type { ProfileUpdateParam, UserFeedback, UserVO } from '../types'
+
+export function getProfile() {
+  return request<UserVO>({
+    url: '/api/user/profile',
+    method: 'GET',
+  })
+}
 
 export function updateProfile(data: ProfileUpdateParam) {
   return request({
@@ -19,5 +26,12 @@ export function updateNutritionGoal(data: {
     url: '/api/user/goal',
     method: 'PUT',
     data,
+  })
+}
+
+export function getFeedbackList() {
+  return request<UserFeedback[]>({
+    url: '/api/user/feedback/list',
+    method: 'GET',
   })
 }

@@ -230,8 +230,7 @@ npm run build:mp-weixin # 微信小程序构建
 详细部署指南请参考：[docs/DEPLOY.md](docs/DEPLOY.md)
 
 ## 许可证
-
-MIT License
+本项目开源协议为 [MIT License](./LICENSE)，详情见仓库根目录 LICENSE 文件。
 
 ## 贡献
 

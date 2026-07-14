@@ -23,7 +23,7 @@
             class="msg-avatar" 
             mode="aspectFill"
           />
-          <view class="msg-bubble">
+          <view class="msg-bubble" @longpress="copyMessage(msg.content)">
             <text class="msg-text">{{ msg.content }}</text>
             <view v-if="msg.images && msg.images.length > 0" class="msg-images">
               <image 
@@ -195,6 +195,24 @@ function removeImage(index: number) {
   selectedImages.value.splice(index, 1)
 }
 
+function copyMessage(content: string) {
+  uni.setClipboardData({
+    data: content,
+    success: () => {
+      uni.showToast({
+        title: '已复制',
+        icon: 'success'
+      })
+    },
+    fail: () => {
+      uni.showToast({
+        title: '复制失败',
+        icon: 'none'
+      })
+    }
+  })
+}
+
 async function sendMessage() {
   if (!canSend.value) return
   if (isLoading.value) return
@@ -228,11 +246,11 @@ async function sendMessage() {
     })
 
     const aiMsg: ChatMessage = {
-      id: Date.now() + 1,
-      role: 'assistant',
-      content: res.data.message?.content || '',
-      createTime: new Date().toISOString()
-    }
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: res.data.content || '',
+        createTime: new Date().toISOString()
+      }
 
     chatMessages.value.push(aiMsg)
   } catch (e) {

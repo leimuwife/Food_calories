@@ -182,9 +182,7 @@ export interface NutritionistChatParam {
   fileIds?: string[]
 }
 
-export interface NutritionistChatResult {
-  message: ChatMessage
-}
+export interface NutritionistChatResult extends ChatMessage {}
 
 export interface UserFeedback {
   id: number

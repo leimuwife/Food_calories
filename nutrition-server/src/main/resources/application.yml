@@ -1,4 +1,5 @@
 server:
+  address: 0.0.0.0
   port: 8088
 
 spring:
@@ -93,3 +94,7 @@ wx:
     token-expire-seconds: 7200
     token-refresh-seconds: 60
     audit-version: ${WX_AUDIT_VERSION:1}
+
+ai:
+  aes:
+    key: ${AI_AES_KEY:NutritionAI2024AesKey32ByteLength!}

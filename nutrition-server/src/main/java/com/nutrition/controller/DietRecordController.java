@@ -51,6 +51,14 @@ public class DietRecordController {
         return Result.ok("查询成功", result);
     }
 
+    /**
+     * 添加饮食记录
+     * @param request
+     * @param dataJson
+     * @param file
+     * @return
+     * @throws Exception
+     */
     @PostMapping(value = "/record", consumes = "multipart/form-data")
     public Result<Map<String, Object>> addDietRecordWithFile(HttpServletRequest request,
                                                             @RequestParam("data") String dataJson,
@@ -68,6 +76,13 @@ public class DietRecordController {
         return Result.ok("添加成功", result);
     }
 
+    /**
+     * 添加饮食记录
+     * @param request
+     * @param param
+     * @return
+     * @throws Exception
+     */
     @PostMapping(value = "/record", consumes = "application/json")
     public Result<Map<String, Object>> addDietRecord(HttpServletRequest request,
                                                      @Valid @RequestBody DietRecordParam param) throws Exception {

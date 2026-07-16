@@ -139,6 +139,13 @@
             <version>1.0.0</version>
         </dependency>
 
+        <!-- DashVector SDK -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dashvector-java-sdk</artifactId>
+            <version>1.0.21</version>
+        </dependency>
+
         <!-- LangChain4j -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

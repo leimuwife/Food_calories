@@ -98,3 +98,22 @@ wx:
 ai:
   aes:
     key: ${AI_AES_KEY:NutritionAI2024AesKey32ByteLength!}
+  estimate:
+    cache-ttl-hours: 24
+    rate-limit-per-minute: 8
+    model-timeout-seconds: 30
+    min-calorie: 0
+    max-calorie: 10000
+# 向量数据库配置
+vector:
+  retrieval:
+    endpoint: ${VECTOR_ENDPOINT:}
+    cluster-name: ${VECTOR_CLUSTER_NAME:food-nutrition-cluster}
+    collection-name: ${VECTOR_COLLECTION_NAME:food_nutrition_knowledge}
+    default-top-n: 3
+    default-min-similarity: 0.75
+    batch-size: 10
+    retry-count: 2
+    cache-ttl-days: 7
+    enable-embedding: ${VECTOR_ENABLE_EMBEDDING:false}
+    api-key: ${VECTOR_API_KEY:}

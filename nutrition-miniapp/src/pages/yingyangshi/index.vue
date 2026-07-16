@@ -248,7 +248,7 @@ async function sendMessage() {
     const aiMsg: ChatMessage = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: res.data.content || '',
+        content: res.data.response || '',
         createTime: new Date().toISOString()
       }
 

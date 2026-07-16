@@ -193,8 +193,9 @@ async function handleAiEstimate() {
   isLoading.value = true
 
   try {
-    const res = await estimateCalories(description)
-    const calories = res.data.calories
+    const weight = formData.value.weight.trim() ? Number(formData.value.weight) : undefined
+    const res = await estimateCalories(description, weight)
+    const calories = res.data.totalCalorie
     
     if (calories >= 0 && calories <= 10000) {
       formData.value.calories = String(Math.round(calories))

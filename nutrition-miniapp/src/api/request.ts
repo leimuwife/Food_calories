@@ -6,6 +6,7 @@ interface RequestOptions {
   url: string
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   data?: AnyObject
+  params?: AnyObject
   header?: Record<string, string>
   showLoading?: boolean
 }
@@ -17,7 +18,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 export default function request<T = unknown>(options: RequestOptions): Promise<ApiResponse<T>> {
-  const { url, method = 'GET', data, header = {}, showLoading = true } = options
+  const { url, method = 'GET', data, params, header = {}, showLoading = true } = options
 
   if (showLoading) {
     uni.showLoading({ title: '加载中...', mask: true })
@@ -33,11 +34,19 @@ export default function request<T = unknown>(options: RequestOptions): Promise<A
     headers['Authorization'] = `Bearer ${userStore.token}`
   }
 
+  let finalUrl = BASE_URL + url
+  if (params && method === 'GET') {
+    const queryString = Object.entries(params)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value as string)}`)
+      .join('&')
+    finalUrl += '?' + queryString
+  }
+
   return new Promise((resolve, reject) => {
     uni.request({
-      url: BASE_URL + url,
+      url: finalUrl,
       method,
-      data,
+      data: method === 'GET' ? undefined : data,
       header: headers,
       timeout: 15000,
       success: (res) => {

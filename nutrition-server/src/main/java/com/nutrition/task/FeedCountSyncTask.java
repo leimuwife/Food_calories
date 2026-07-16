@@ -47,30 +47,29 @@ public class FeedCountSyncTask {
      */
     @Scheduled(cron = "0 0 * * * ?")
     public void syncFeedCounts() {
-        log.info("========== 开始执行动态计数同步任务 ==========");
 
         try {
-            // ========== 1. SCAN 扫描点赞计数键（非阻塞）==========
+            // 1. SCAN 扫描点赞计数键
             String likeCountPattern = RedisCache.PREFIX_MOMENT_LIKE_COUNT + "*";
             Set<String> likeCountKeys = redisCache.scanKeys(likeCountPattern);
             log.info("SCAN扫描到点赞计数键: {} 个", likeCountKeys.size());
 
-            // ========== 2. SCAN 扫描评论计数键（非阻塞）==========
+            // 2. SCAN 扫描评论计数键
             String commentCountPattern = RedisCache.PREFIX_MOMENT_COMMENT_COUNT + "*";
             Set<String> commentCountKeys = redisCache.scanKeys(commentCountPattern);
             log.info("SCAN扫描到评论计数键: {} 个", commentCountKeys.size());
 
-            // ========== 3. 解析计数键，构建映射表 ==========
+            // 3. 解析计数键，构建映射表
             Map<Long, Integer> likeCountMap = parseCountKeys(likeCountKeys, RedisCache.PREFIX_MOMENT_LIKE_COUNT);
             Map<Long, Integer> commentCountMap = parseCountKeys(commentCountKeys, RedisCache.PREFIX_MOMENT_COMMENT_COUNT);
 
-            // ========== 4. 合并需要更新的动态ID ==========
+            // 4. 合并需要更新的动态ID
             Set<Long> allFeedIds = Stream.concat(likeCountMap.keySet().stream(), commentCountMap.keySet().stream())
                     .collect(Collectors.toSet());
 
             log.info("需要更新的动态数: {} 个", allFeedIds.size());
 
-            // ========== 5. 组装批量更新 DTO 列表 ==========
+            //5. 组装批量更新 DTO 列表
             List<FeedCountUpdateDTO> updateList = new ArrayList<>();
             for (Long feedId : allFeedIds) {
                 FeedCountUpdateDTO dto = new FeedCountUpdateDTO();
@@ -80,13 +79,13 @@ public class FeedCountSyncTask {
                 updateList.add(dto);
             }
 
-            // ========== 6. 空列表前置判断（约束 1）==========
+            // 6. 空列表前置判断
             if (updateList == null || updateList.isEmpty()) {
                 log.info("动态计数同步任务：无数据需要更新，跳过数据库更新");
                 return;
             }
 
-            // ========== 7. 调用 Service 批量更新（Service 内部处理分片 + 独立事务）==========
+            // 7. 调用 Service 批量更新（Service 内部处理分片 + 独立事务）==========
             int totalUpdated = feedService.batchUpdateFeedCount(updateList);
 
             log.info("动态计数同步任务完成，成功更新 {} 条记录", totalUpdated);
@@ -95,8 +94,6 @@ public class FeedCountSyncTask {
             log.error("动态计数同步任务执行失败: {}", e.getMessage(), e);
             // 任务失败不中断，下次周期重试
         }
-
-        log.info("========== 动态计数同步任务结束 ==========");
     }
 
     /**

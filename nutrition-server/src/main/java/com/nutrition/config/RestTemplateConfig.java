@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class RestTemplateConfig {
 
-    private static final int CONNECT_TIMEOUT_SECONDS = 5;
+    private static final int CONNECT_TIMEOUT_SECONDS = 15;
     private static final int READ_TIMEOUT_SECONDS = 60;
 
     @Bean

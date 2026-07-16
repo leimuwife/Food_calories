@@ -2,9 +2,9 @@ import request from '../request'
 import type { NutritionistChatParam, NutritionistChatResult } from '../types'
 
 export function nutritionistChat(data: NutritionistChatParam) {
-  return request<NutritionistChatResult>({
-    url: '/api/nutritionist/chat',
+  return request<{ response: string }>({
+    url: '/api/ai/chat',
     method: 'POST',
-    data,
+    data: { content: data.content },
   })
 }

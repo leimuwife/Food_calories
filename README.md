@@ -110,7 +110,7 @@ CREATE DATABASE nutrition_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 2. 执行初始化脚本：
 ```bash
-mysql -u username -p nutrition_db < nutrition-server/src/main/resources/db/数据库.sql
+mysql -u username -p nutrition_db < nutrition-server/src/main/resources/db/nutrition_db.sql
 ```
 
 ### 配置文件修改

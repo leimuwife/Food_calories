@@ -6,7 +6,7 @@
         <h2 class="page-title">知识库更新</h2>
         <p class="page-desc">
           上传文档会自动解析文本并入向量知识库，用于AI食材热量问答检索。
-          支持 PDF、DOCX、DOC、TXT、MD 格式，单文件上限 20MB。
+          支持 PDF、DOCX、DOC、TXT、MD、JSON 格式，单文件上限 20MB。
         </p>
       </div>
       <div class="header-actions">
@@ -94,7 +94,7 @@
         <div class="upload-placeholder">
           <el-icon class="upload-icon"><UploadFilled /></el-icon>
           <div class="upload-text">将文件拖到此处，或<span class="upload-link">点击选择</span></div>
-          <div class="upload-hint">支持 PDF、DOCX、DOC、TXT、MD 格式，单文件 ≤ 20MB</div>
+          <div class="upload-hint">支持 PDF、DOCX、DOC、TXT、MD、JSON 格式，单文件 ≤ 20MB</div>
         </div>
       </el-upload>
 
@@ -126,7 +126,7 @@ import {
 } from '../../api/dashvector'
 
 // ==================== 允许的文件格式 ====================
-const ALLOWED_EXTENSIONS = '.pdf,.docx,.doc,.txt,.md'
+const ALLOWED_EXTENSIONS = '.pdf,.docx,.doc,.txt,.md,.json'
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 
 // ==================== 文档列表相关 ====================

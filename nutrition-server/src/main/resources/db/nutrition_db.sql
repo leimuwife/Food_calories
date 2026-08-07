@@ -265,3 +265,27 @@ CREATE TABLE `user_feedback` (
   KEY `idx_user_id` (`user_id`),
   KEY `idx_user_delete` (`user_id`,`delete_flag`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户问题反馈表';
+
+
+-- nutrition_db.rag_knowledge_document 定义
+
+CREATE TABLE `rag_knowledge_document` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '文档ID',
+  `doc_name` varchar(255) NOT NULL COMMENT '文档名称',
+  `file_md5` varchar(64) NOT NULL COMMENT '文件MD5，用于查重',
+  `upload_user_id` bigint DEFAULT NULL COMMENT '上传管理员ID',
+  `status` tinyint DEFAULT '2' COMMENT '状态：1正常 2向量入库中 3入库失败 4已删除',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注说明',
+  `vector_store_id` varchar(255) DEFAULT '' COMMENT '阿里云向量库文档分组ID',
+  `file_ids` varchar(2000) DEFAULT NULL COMMENT '关联附件表(sys_file)主键ID，多个用逗号分隔',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `delete_flag` tinyint DEFAULT '0' COMMENT '逻辑删除 0未删除 1已删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_md5` (`file_md5`),
+  KEY `idx_upload_user` (`upload_user_id`),
+  KEY `idx_delete_flag` (`delete_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='RAG知识库文档表';
+
+-- 如果表已存在，添加file_ids字段
+-- ALTER TABLE `rag_knowledge_document` ADD COLUMN `file_ids` varchar(2000) DEFAULT NULL COMMENT '关联附件表(sys_file)主键ID，多个用逗号分隔' AFTER `vector_store_id`;

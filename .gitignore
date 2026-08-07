@@ -55,3 +55,11 @@ target/
 unpackage/
 dist/
 node_modules/
+
+# 日志
+*.log
+logs/
+# IDE工具文件
+.codebuddy
+# 本地http测试文件
+*.http

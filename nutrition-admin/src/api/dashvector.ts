@@ -16,6 +16,8 @@ export interface KnowledgeDocument {
   uploadTime: string
   /** 文件MD5标识 */
   fileMd5: string
+  /** 附件在线访问地址（OSS） */
+  fileUrl: string
 }
 
 /**

@@ -95,11 +95,14 @@ wx:
     token-refresh-seconds: 60
     audit-version: ${WX_AUDIT_VERSION:1}
 
-# Python-FastAPI AI服务配置（预留，后续正式接入AI服务时启用）
+# Python-FastAPI AI服务配置
 fastapi:
-  base-url: ${FASTAPI_BASE_URL:http://localhost:8000}
+  base-url: ${FASTAPI_BASE_URL:http://localhost:8004}
+  api-secret-key: ${FASTAPI_SECRET_KEY:}
   estimate-path: /api/ai/estimate-calorie
   chat-path: /api/ai/chat
-  knowledge-upload-path: /api/knowledge/upload
+  knowledge-upload-path: /api/rag/document/upload
+  knowledge-delete-path: /api/rag/document/delete
+  knowledge-search-path: /api/rag/search/query
   connect-timeout: 10
   read-timeout: 60

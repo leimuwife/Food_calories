@@ -33,6 +33,8 @@ public class JwtAuthFilter implements Filter {
             "/api/auth/logout",
             "/api/attachment/",
             "/api/admin/login",
+            // Python AI服务回调接口，使用API密钥鉴权，无需JWT
+            "/api/rag/knowledge/callback",
     };
 
     @Override

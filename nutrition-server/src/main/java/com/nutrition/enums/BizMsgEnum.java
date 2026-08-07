@@ -60,6 +60,29 @@ public enum BizMsgEnum {
     ADMIN_DISABLED(400, "账号已被禁用，请联系超级管理员"),
     ADMIN_PASSWORD_ERROR(400, "密码错误"),
 
+    // ========== RAG知识库模块 (RAG) ==========
+    RAG_FILE_EMPTY(400, "上传文件内容为空"),
+    RAG_FILE_TOO_LARGE(400, "上传文件超过50MB限制"),
+    RAG_FILE_NOT_NULL(400, "上传文件不能为空"),
+    RAG_DOC_ID_NOT_NULL(400, "文档ID不能为空"),
+    RAG_FILE_MD5_NOT_EMPTY(400, "文件MD5不能为空"),
+    RAG_FILE_DUPLICATE(400, "该文档已存在知识库，无需重复上传"),
+    RAG_DOC_NOT_EXIST(404, "文档不存在"),
+    RAG_UPLOAD_FAILED(500, "知识库文档上传失败"),
+    RAG_DELETE_FAILED(500, "文档删除失败"),
+    RAG_LIST_FAILED(500, "查询知识库列表失败"),
+    RAG_PYTHON_CALL_FAILED(500, "Python AI服务调用失败，请稍后重试"),
+    RAG_PYTHON_RESPONSE_PARSE_FAILED(500, "Python响应解析失败"),
+    RAG_PYTHON_UPLOAD_BIZ_FAILED(500, "Python上传失败"),
+    RAG_PYTHON_DELETE_BIZ_FAILED(500, "Python知识库删除业务失败"),
+    RAG_PYTHON_SEARCH_FAILED(500, "知识库检索失败"),
+    RAG_PYTHON_SEARCH_CALL_FAILED(500, "知识库检索调用失败"),
+    RAG_TOPK_INVALID(400, "topk必须在1-50之间"),
+    RAG_QUERY_NOT_EMPTY(400, "检索查询内容不能为空"),
+    RAG_CALLBACK_DOC_ID_EMPTY(400, "doc_id不能为空"),
+    RAG_CALLBACK_PROCESS_FAILED(500, "回调处理失败"),
+    RAG_STATUS_UPDATE_FAILED(500, "更新文档状态失败"),
+
     // ========== 通用错误 ==========
     SYSTEM_ERROR(500, "系统繁忙，请稍后再试");
 

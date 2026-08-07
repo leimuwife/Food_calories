@@ -1,52 +1,56 @@
 package com.nutrition.service;
 
-import com.nutrition.param.AiConfigParam;
-import com.nutrition.vo.AiConfigVO;
+import com.nutrition.entity.AiConfig;
 
 import java.util.List;
 
 /**
- * AI配置服务接口
+ * AI配置管理服务接口
  */
 public interface AiConfigService {
 
     /**
-     * 获取所有配置列表
+     * 获取所有AI配置列表
      */
-    List<AiConfigVO> listAll();
+    List<AiConfig> listAll();
 
     /**
-     * 获取启用的配置
+     * 根据ID获取AI配置
      */
-    AiConfigVO getEnabledConfig();
+    AiConfig getById(Long id);
 
     /**
-     * 获取启用配置的原始实体（用于模型调用）
+     * 新增AI配置
      */
-    com.nutrition.entity.AiConfig getEnabledConfigEntity();
+    Long add(AiConfig config);
 
     /**
-     * 新增配置
+     * 修改AI配置
      */
-    Long add(AiConfigParam param);
+    void update(Long id, AiConfig config);
 
     /**
-     * 更新配置
-     */
-    void update(Long id, AiConfigParam param);
-
-    /**
-     * 删除配置
+     * 删除AI配置
      */
     void delete(Long id);
 
     /**
-     * 切换启用配置
+     * 启用AI配置
      */
     void enable(Long id);
 
     /**
-     * 刷新缓存
+     * 禁用AI配置
      */
-    void refreshCache();
+    void disable(Long id);
+
+    /**
+     * 测试AI配置连通性
+     */
+    String testConnection(Long id, String message);
+
+    /**
+     * 获取当前启用的AI配置
+     */
+    AiConfig getEnabledConfig();
 }

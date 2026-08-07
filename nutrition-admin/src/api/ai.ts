@@ -44,6 +44,10 @@ export function enableAiConfig(id: number): Promise<ApiResponse<void>> {
   return request.post(`/ai/config/${id}/enable`)
 }
 
+export function disableAiConfig(id: number): Promise<ApiResponse<void>> {
+  return request.post(`/ai/config/${id}/disable`)
+}
+
 export function testAiConfig(message: string): Promise<ApiResponse<{ message: string; response: string }>> {
   return request.post('/ai/config/test', { message })
 }

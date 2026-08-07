@@ -5,7 +5,7 @@ import com.nutrition.entity.AiConfig;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * AI配置数据访问层
+ * AI配置Mapper
  */
 @Mapper
 public interface AiConfigMapper extends BaseMapper<AiConfig> {

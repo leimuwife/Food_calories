@@ -54,11 +54,6 @@ public enum BizMsgEnum {
     // ========== 打卡模块 (CHECKIN) ==========
     CHECKIN_RECORD_NOT_EXIST(404, "打卡记录不存在"),
 
-    // ========== AI模块 (AI) ==========
-    AI_CONFIG_NOT_FOUND(404, "AI配置不存在"),
-    AI_CONFIG_ENABLED_CANNOT_DELETE(400, "启用状态的配置不能删除"),
-    AI_CONFIG_NOT_ENABLED(500, "未配置启用的AI模型"),
-    AI_MODEL_CALL_FAILED(500, "AI模型调用失败，请稍后重试"),
 
     // ========== 管理员模块 (ADMIN) ==========
     ADMIN_NOT_EXIST(400, "账号不存在"),

@@ -44,6 +44,13 @@
             </el-icon>
             <span class="menu-text">AI 模型配置</span>
           </div>
+          <!-- 知识库更新 -->
+          <div class="menu-item" @click="router.push('/dashvector')">
+            <el-icon color="#409EFF">
+              <Document />
+            </el-icon>
+            <span class="menu-text">知识库更新</span>
+          </div>
         </div>
       </aside>
 
@@ -58,7 +65,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, User, Setting } from '@element-plus/icons-vue'
+import { ArrowDown, User, Setting, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 

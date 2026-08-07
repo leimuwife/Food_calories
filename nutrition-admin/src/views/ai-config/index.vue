@@ -130,6 +130,7 @@ import {
   updateAiConfig,
   deleteAiConfig,
   enableAiConfig,
+  disableAiConfig,
   testAiConfig,
   type AiConfig,
   type AiConfigForm
@@ -308,8 +309,13 @@ async function handleSubmit() {
  */
 async function handleEnable(config: AiConfig) {
   try {
-    await enableAiConfig(config.id)
-    ElMessage.success(config.isEnabled === 1 ? '禁用成功' : '启用成功')
+    if (config.isEnabled === 1) {
+      await disableAiConfig(config.id)
+      ElMessage.success('禁用成功')
+    } else {
+      await enableAiConfig(config.id)
+      ElMessage.success('启用成功')
+    }
     loadConfigList()
   } catch (error) {
     ElMessage.error('操作失败')

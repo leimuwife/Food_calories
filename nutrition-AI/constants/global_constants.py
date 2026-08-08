@@ -78,8 +78,9 @@ class VectorConstants:
     # Embedding批量大小
     EMBEDDING_BATCH_SIZE = 25
 
-    # 检索相似度阈值（低于此值的结果将被过滤）
-    SEARCH_SCORE_THRESHOLD = 0.75
+    # 检索距离阈值（DashVector cosine distance = 1 - similarity，值越小越相似，范围[0,2]）
+    # distance > 此值的结果将被过滤（等价于 similarity < 0.75 的结果被丢弃）
+    SEARCH_SCORE_THRESHOLD = 0.25
 
     # 删除分页大小（每页查询的向量数量）
     DELETE_PAGE_SIZE = 1000
@@ -93,6 +94,10 @@ class VectorConstants:
     # 默认检索返回数量
     DEFAULT_SEARCH_TOPK = 5
 
+    # 改动1: 检索对外入参topk固定约束区间（召回-重排-截取规则使用）
+    RETRIEVE_MIN_TOPK = 8
+    RETRIEVE_MAX_TOPK = 12
+
     # 向量维度枚举（text-embedding-v4 仅支持 1024 或 768）
     DIMENSION_1024 = 1024
     DIMENSION_768 = 768
@@ -101,6 +106,18 @@ class VectorConstants:
 
     # 文档内容前缀（标识知识库文档，帮助Embedding模型区分文档类型）
     DOCUMENT_PREFIX = "document: "
+
+
+# ==================== Redis相关常量 ====================
+
+class RedisConstants:
+    """Redis缓存相关常量"""
+    # 食材基础热量缓存Hash Key（与Java端 FoodNutritionCacheRunner 保持一致）
+    FOOD_NUTRITION_HASH_KEY = "food:nutrition"
+
+    # 当前启用的AI模型配置缓存Key（与Java端 AiConfigCacheRunner 保持一致）
+    # String结构，value为精简配置JSON（含modelName/apiUrl/apiKey/temperature/maxTokens/systemPrompt）
+    AI_CONFIG_ENABLED_KEY = "ai:config:enabled"
 
 
 # ==================== 安全相关常量 ====================

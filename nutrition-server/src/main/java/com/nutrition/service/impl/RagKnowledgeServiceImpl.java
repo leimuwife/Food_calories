@@ -1,6 +1,7 @@
 package com.nutrition.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nutrition.client.FastApiClient;
 import com.nutrition.client.FastApiProperties;
@@ -91,6 +92,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
                 document.setRemark("等待Python向量入库处理");
                 document.setVectorStoreId("");
                 document.setFileIds(fileIds);
+                // 插入时delete_flag=0（可见），Python入库失败时再置为1
                 document.setDeleteFlag(0);
                 documentMapper.insert(document);
                 log.info("文档记录已保存并提交: docId={}, status={}, fileIds={}",
@@ -107,6 +109,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
                 if (!success) {
                     updateStatusDirect(docId, RagDocumentStatusEnum.FAILED,
                             BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + "，入库异常");
+                    markDeleteFlag(docId);
                     throw new RuntimeException(BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage());
                 }
 
@@ -115,6 +118,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
                 log.error("Python调用异常: docId={}, error={}", docId, e.getMessage(), e);
                 updateStatusDirect(docId, RagDocumentStatusEnum.FAILED,
                         BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + ": " + e.getMessage());
+                markDeleteFlag(docId);
                 throw new RuntimeException(BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + ": " + e.getMessage());
             }
 
@@ -227,10 +231,13 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             }
         }
 
-        // 3. 更新文档状态为"已删除"（updateById 仅更新 status，MyBatis-Plus 会忽略 delete_flag 字段）
+        // 3. 逻辑删除：status改为已删除 + delete_flag设为1
+        // MyBatis-Plus全局配置了logic-delete-field，updateById会忽略delete_flag，需用UpdateWrapper显式更新
         document.setStatus(RagDocumentStatusEnum.DELETED.getCode());
-        document.setDeleteFlag(1);
         documentMapper.updateById(document);
+        documentMapper.update(null, new LambdaUpdateWrapper<RagKnowledgeDocument>()
+                .set(RagKnowledgeDocument::getDeleteFlag, 1)
+                .eq(RagKnowledgeDocument::getId, id));
         log.info("文档已删除: docId={}, status={}", id, RagDocumentStatusEnum.DELETED.getDesc());
     }
 
@@ -239,7 +246,9 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
     public void updateDocumentStatus(Long docId, Integer status, String vectorStoreId, String message) {
         log.info("更新文档状态回调: docId={}, status={}, vectorStoreId={}, message={}", docId, status, vectorStoreId, message);
 
-        RagKnowledgeDocument document = documentMapper.selectById(docId);
+        // 使用selectByIdIgnoreDeleteFlag绕过MyBatis-Plus逻辑删除过滤，
+        // 确保delete_flag=1的记录（上传超时被误标记）也能被回调正常更新
+        RagKnowledgeDocument document = documentMapper.selectByIdIgnoreDeleteFlag(docId);
         if (document == null) {
             log.warn("回调文档不存在或已被删除，跳过状态更新: docId={}", docId);
             return;
@@ -256,8 +265,26 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
         }
 
         log.info("准备更新文档: docId={}, newStatus={}, newVectorStoreId={}", docId, document.getStatus(), document.getVectorStoreId());
-        int rows = documentMapper.updateById(document);
-        log.info("文档状态已更新: docId={}, rows={}, status={}, vectorStoreId={}", docId, rows, document.getStatus(), document.getVectorStoreId());
+        documentMapper.updateById(document);
+
+        // Python回调入库失败时，将delete_flag置为1使文档不可见
+        if (status != null && status == RagDocumentStatusEnum.FAILED.getCode()) {
+            documentMapper.physicalDeleteByMd5(document.getFileMd5());
+            documentMapper.update(null, new LambdaUpdateWrapper<RagKnowledgeDocument>()
+                    .set(RagKnowledgeDocument::getDeleteFlag, 1)
+                    .eq(RagKnowledgeDocument::getId, docId));
+            log.info("文档入库失败，delete_flag已置为1: docId={}", docId);
+        } else if (status != null && status == RagDocumentStatusEnum.NORMAL.getCode()) {
+            // 回调成功：如果之前因超时被误标记为delete_flag=1，这里恢复为0
+            if (Integer.valueOf(1).equals(document.getDeleteFlag())) {
+                documentMapper.update(null, new LambdaUpdateWrapper<RagKnowledgeDocument>()
+                        .set(RagKnowledgeDocument::getDeleteFlag, 0)
+                        .eq(RagKnowledgeDocument::getId, docId));
+                log.info("文档入库成功，delete_flag已恢复为0: docId={}", docId);
+            }
+        }
+
+        log.info("文档状态已更新: docId={}, status={}, vectorStoreId={}", docId, document.getStatus(), document.getVectorStoreId());
     }
 
     /**
@@ -273,6 +300,19 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             }
         } catch (Exception e) {
             log.error("{}: docId={}", BizMsgEnum.RAG_STATUS_UPDATE_FAILED.getMessage(), docId, e);
+        }
+    }
+
+    /**
+     * 标记文档delete_flag=1（Python入库失败时调用，使文档不可见）
+     */
+    private void markDeleteFlag(Long docId) {
+        try {
+            documentMapper.update(null, new LambdaUpdateWrapper<RagKnowledgeDocument>()
+                    .set(RagKnowledgeDocument::getDeleteFlag, 1)
+                    .eq(RagKnowledgeDocument::getId, docId));
+        } catch (Exception e) {
+            log.error("标记delete_flag失败: docId={}, error={}", docId, e.getMessage(), e);
         }
     }
 

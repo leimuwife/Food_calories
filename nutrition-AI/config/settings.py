@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # ==================== API鉴权配置 ====================
     api_secret_key: str = "your-secret-key-change-in-production"
 
+    # ==================== Redis 缓存配置（食材基础热量缓存） ====================
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_password: str = ""
+    redis_db: int = 0
+
     # ==================== 阿里云 DashVector 向量数据库配置 ====================
     vector_endpoint: str = ""
     vector_api_key: str = ""
@@ -37,6 +43,10 @@ class Settings(BaseSettings):
     separators: List[str] = [
         "\n\n", "\n", "。", "！", "？", ".", "!", "?", "；", ";", "，", ",", " ", ""
     ]
+
+
+    # ==================== 大模型LLM请求超时（秒，Python侧控制，Redis中无此配置） ====================
+    llm_timeout: int = 60
 
     # ==================== Java回调配置 ====================
     java_callback_url: str = "http://localhost:8088/api/rag/knowledge/callback"

@@ -7,6 +7,9 @@ pydantic-settings>=2.5.0
 python-dotenv>=1.0.1
 loguru>=0.7.2
 
+# 重试组件（向量库网络/超时异常轻量重试）
+tenacity>=8.2.0
+
 # LangChain 核心
 langchain>=0.3.0
 langchain-core>=0.3.0
@@ -15,6 +18,12 @@ langchain-text-splitters>=0.3.0
 
 # 阿里云 DashVector 向量数据库
 dashvector>=1.0.23
+
+# Redis缓存查询（食材基础热量缓存）
+redis>=5.0.0
+
+# OpenAI兼容大模型接口（LangChain LCEL链式调用）
+langchain-openai>=0.2.0
 
 # 阿里云 DashScope Embedding (text-embedding-v4)
 dashscope>=1.20.0

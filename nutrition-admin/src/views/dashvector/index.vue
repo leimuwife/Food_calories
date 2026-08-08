@@ -46,7 +46,6 @@
             <el-tag v-if="row.status === 1" type="success" effect="light">正常</el-tag>
             <el-tag v-else-if="row.status === 2" type="primary" effect="light">向量入库中</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" effect="light">入库失败</el-tag>
-            <el-tag v-else-if="row.status === 4" type="info" effect="light">已删除</el-tag>
             <el-tag v-else effect="plain">未知</el-tag>
           </template>
         </el-table-column>
@@ -181,12 +180,14 @@ async function loadDocumentList() {
         pageSize: pageSize.value,
       })
       const records = (response.data.records || []) as KnowledgeDocument[]
-      // 此处就是需要修改的 map 代码
-      documentList.value = records.map((item) => ({
-        ...item,
-        status: Number(item.status),
-        fileSizeText: formatFileSize(item.fileSize),
-      }))
+      // 过滤已删除文档（status=4），不展示
+      documentList.value = records
+        .filter((item) => Number(item.status) !== 4)
+        .map((item) => ({
+          ...item,
+          status: Number(item.status),
+          fileSizeText: formatFileSize(item.fileSize),
+        }))
       total.value = response.data.total || 0
   } catch {
     ElMessage.error('加载文档列表失败')

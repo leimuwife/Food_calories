@@ -55,7 +55,7 @@
               <text class="calorie-unit">kcal</text>
             </view>
             <view 
-              :class="['ai-btn', { 'ai-btn-disabled': !formData.description.trim() || isLoading }]" 
+              :class="['ai-btn', { 'ai-btn-disabled': !formData.name.trim() || isLoading }]" 
               @tap="handleAiEstimate"
             >
               <svg viewBox="0 0 48 48" class="ai-btn-icon">
@@ -178,10 +178,10 @@ function handleImageUpload() {
 }
 
 async function handleAiEstimate() {
-  const description = formData.value.description.trim()
-  if (!description) {
+  const name = formData.value.name.trim()
+  if (!name) {
     uni.showToast({
-      title: '请先完善食物描述再进行 AI 估算',
+      title: '请先输入食物名称再进行 AI 估算',
       icon: 'none',
       duration: 2000,
     })
@@ -193,8 +193,9 @@ async function handleAiEstimate() {
   isLoading.value = true
 
   try {
+    const description = formData.value.description.trim()
     const weight = formData.value.weight.trim() ? Number(formData.value.weight) : undefined
-    const res = await estimateCalories(description, weight)
+    const res = await estimateCalories(name, description, weight)
     const calories = res.data.totalCalorie
     
     if (calories >= 0 && calories <= 10000) {

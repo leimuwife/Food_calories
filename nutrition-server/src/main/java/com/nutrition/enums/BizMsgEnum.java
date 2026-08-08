@@ -83,6 +83,11 @@ public enum BizMsgEnum {
     RAG_CALLBACK_PROCESS_FAILED(500, "回调处理失败"),
     RAG_STATUS_UPDATE_FAILED(500, "更新文档状态失败"),
 
+    // ========== AI热量估算模块 (AI) ==========
+    AI_ESTIMATE_FAILED(500, "AI热量估算失败，请稍后重试"),
+    AI_ESTIMATE_NO_CONFIG(500, "未找到启用的AI配置，请先在管理后台启用"),
+    AI_ESTIMATE_NO_RESULT(500, "AI估算未返回有效结果"),
+
     // ========== 通用错误 ==========
     SYSTEM_ERROR(500, "系统繁忙，请稍后再试");
 

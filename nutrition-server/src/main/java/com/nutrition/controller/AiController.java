@@ -38,13 +38,14 @@ public class AiController {
      * @return 热量估算结果，仅包含总热量数值（BigDecimal保留1位小数）
      */
     @GetMapping("/estimate-calorie")
-    @Operation(summary = "AI热量估算", description = "根据食物描述和重量估算总热量，仅返回数值用于输入框回填")
-    public Result<CalorieEstimateVO> estimateCalorie(@RequestParam String foodDesc, 
+    @Operation(summary = "AI热量估算", description = "根据食物名称、描述和重量估算总热量，仅返回数值用于输入框回填")
+    public Result<CalorieEstimateVO> estimateCalorie(@RequestParam String foodName,
+                                                      @RequestParam(required = false) String foodDesc,
                                                       @RequestParam(required = false) Integer weight) {
-        log.info("AI热量估算请求: foodDesc={}, weight={}", foodDesc, weight);
+        log.info("AI热量估算请求: foodName={}, foodDesc={}, weight={}", foodName, foodDesc, weight);
 
         try {
-            CalorieEstimateResultDTO result = aiFoodEstimateService.estimateCalorie(foodDesc, weight);
+            CalorieEstimateResultDTO result = aiFoodEstimateService.estimateCalorie(foodName, foodDesc, weight);
 
             CalorieEstimateVO vo = CalorieEstimateVO.builder()
                     .totalCalorie(result.getTotalCalorie())
@@ -52,7 +53,7 @@ public class AiController {
 
             return Result.ok(vo);
         } catch (Exception e) {
-            log.error("AI热量估算异常: foodDesc={}, weight={}, error={}", foodDesc, weight, e.getMessage(), e);
+            log.error("AI热量估算异常: foodName={}, foodDesc={}, weight={}, error={}", foodName, foodDesc, weight, e.getMessage(), e);
             return Result.fail("暂时无法估算，请手动填写食材热量");
         }
     }

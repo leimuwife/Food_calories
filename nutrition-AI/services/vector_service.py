@@ -14,8 +14,7 @@ class VectorService:
     def __init__(self) -> None:
         api_key = settings.vector_api_key.strip()
         endpoint = settings.vector_endpoint.strip()
-        logger.info("正在初始化DashVector客户端: endpoint={}, collection={}",
-                    endpoint, settings.vector_collection_name)
+        logger.info("正在初始化DashVector客户端")
 
         self.client = dashvector.Client(
             api_key=api_key,
@@ -80,16 +79,6 @@ class VectorService:
     def _validate_doc_id(doc_id: str) -> bool:
         """校验doc_id是否有效"""
         return doc_id is not None and isinstance(doc_id, str) and len(doc_id.strip()) > 0
-
-    @staticmethod
-    def _validate_topk(topk: int) -> bool:
-        """校验topk是否在1-20之间"""
-        return topk is not None and isinstance(topk, int) and 1 <= topk <= 20
-
-    @staticmethod
-    def _validate_query(query: str) -> bool:
-        """校验query是否有效"""
-        return query is not None and isinstance(query, str) and len(query.strip()) > 0
 
     @staticmethod
     def _build_filter_expr(field: str, value: str) -> str:
@@ -187,9 +176,12 @@ class VectorService:
                 logger.info("处理分片批次: [{}-{}), 批次大小={}", batch_start, batch_end, len(batch))
 
                 # 1. 批量计算Embedding向量（DashScope text-embedding-v4 单次最多25条）
-                #    入库文本添加 document: 前缀，帮助Embedding模型识别知识库文档类型
+                #    食物数据：page_content仅存食物名（如"牛蛙"），直接嵌入，不加document:前缀，
+                #    否则9个英文字符会淹没2个中文字符的语义
+                #    普通文档：保留document:前缀
                 texts = [
-                    f"{VectorConstants.DOCUMENT_PREFIX}{doc.page_content}"
+                    doc.page_content if doc.metadata.get("nutrition_text")
+                    else f"{VectorConstants.DOCUMENT_PREFIX}{doc.page_content}"
                     for doc in batch
                 ]
 
@@ -210,12 +202,16 @@ class VectorService:
                     chunk_index = batch_start + i
                     chunk_id = f"{doc_id}_chunk_{chunk_index}"
 
+                    # 食物数据：page_content仅存食物名(用于embedding)，完整营养信息存metadata
+                    # 向量库text字段存完整营养文本(供检索返回展示)，而非嵌入用的带前缀文本
+                    stored_text = doc.metadata.get("nutrition_text") or texts[i]
+
                     docs_to_insert.append(
                         Doc(
                             id=chunk_id,
                             vector=vec,
                             fields={
-                                "text": texts[i],  # 已带 document: 前缀
+                                "text": stored_text,
                                 "doc_id": doc_id,
                                 "file_md5": file_md5,
                                 "chunk_index": str(chunk_index),
@@ -333,84 +329,6 @@ class VectorService:
 
         except Exception as e:
             logger.error("向量删除失败, doc_id={}, error={}", doc_id, str(e))
-            raise
-
-    def search(self, query: str, topk: int = 5) -> List[dict]:
-        """
-        知识库向量检索
-        增加score阈值过滤（>=0.75），过滤相似度过低的结果
-
-        Args:
-            query: 查询文本
-            topk: 返回结果数量（合法区间1-20）
-
-        Returns:
-            检索结果列表（已过滤低相似度），每条包含text、score、metadata
-        """
-        logger.info("向量检索: query={}, topk={}", query[:50], topk)
-
-        if not self._validate_query(query):
-            logger.warning("query无效，跳过检索")
-            return []
-
-        if not self._validate_topk(topk):
-            logger.warning("topk无效({})，限制为1-20", topk)
-            topk = max(1, min(topk, 20))
-
-        try:
-            # 生成查询向量（耗时埋点）
-            embed_start = time.time()
-            query_vector = self.embeddings.embed_query(query)
-            embed_cost = (time.time() - embed_start) * 1000
-            logger.info("检索嵌入耗时: query={}, cost={:.1f}ms", query[:50], embed_cost)
-
-            # 执行检索（耗时埋点）
-            search_start = time.time()
-            results = self.collection.query(
-                vector=query_vector,
-                topk=topk,
-                output_fields=["text", "doc_id", "file_md5", "chunk_index", "filename"],
-                include_vector=False
-            )
-            search_cost = (time.time() - search_start) * 1000
-            logger.info("检索耗时: query={}, cost={:.1f}ms, raw_count={}", query[:50], search_cost, len(results))
-
-            # 整理结果 + score阈值过滤
-            search_results = []
-            filtered_count = 0
-
-            for doc in results:
-                score = float(doc.score) if hasattr(doc, "score") else 0.0
-
-                # score >= 0.75 阈值过滤
-                if score < VectorConstants.SEARCH_SCORE_THRESHOLD:
-                    filtered_count += 1
-                    continue
-
-                # 去除入库时添加的 document: 前缀，返回纯净文本
-                raw_text = doc.fields.get("text", "")
-                clean_text = raw_text[len(VectorConstants.DOCUMENT_PREFIX):] if raw_text.startswith(VectorConstants.DOCUMENT_PREFIX) else raw_text
-
-                search_results.append({
-                    "text": clean_text,
-                    "score": score,
-                    "doc_id": doc.fields.get("doc_id", ""),
-                    "file_md5": doc.fields.get("file_md5", ""),
-                    "chunk_index": int(doc.fields.get("chunk_index", 0)),
-                    "filename": doc.fields.get("filename", "")
-                })
-
-            if filtered_count > 0:
-                logger.info("检索结果过滤: 原始={}, 阈值过滤(score>={})={}, 保留={}",
-                            len(results), VectorConstants.SEARCH_SCORE_THRESHOLD, filtered_count, len(search_results))
-
-            total_cost = embed_cost + search_cost
-            logger.info("向量检索完成: query={}, results={}, total_cost={:.1f}ms",
-                        query[:50], len(search_results), total_cost)
-            return search_results
-
-        except Exception as e:
-            logger.error("向量检索失败: query={}, error={}", query[:50], str(e))
             raise
 
     def check_md5_exists(self, file_md5: str) -> bool:

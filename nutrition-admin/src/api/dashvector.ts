@@ -53,6 +53,7 @@ export function getKnowledgeList(params?: {
 export function uploadKnowledge(formData: FormData): Promise<ApiResponse<UploadResult>> {
   return request.post('/rag/knowledge/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 

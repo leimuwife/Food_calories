@@ -240,15 +240,74 @@ public class FastApiClient {
         }
     }
 
-    // ==================== 预留方法 ====================
+    // ==================== AI热量估算 ====================
 
     /**
-     * 调用Python热量估算接口（预留）
+     * 调用Python热量估算接口
+     *
+     * @param foodName     食物名称（如"牛蛙"）
+     * @param foodDesc     食物描述（如"一只"，可为空）
+     * @param weight       食物重量（克），可为null
+     * @param systemPrompt 系统提示词（从MySQL AI配置读取，热量估算不使用但需传递）
+     * @return 总热量（千卡），保留2位小数
      */
-    public BigDecimal estimateCalorie(String foodDesc, Integer weight) {
-        log.debug("FastApiClient.estimateCalorie 预留方法，当前未执行真实调用");
-        return BigDecimal.ZERO;
+    @Retryable(
+            value = {RestClientException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2)
+    )
+    public BigDecimal estimateCalorie(String foodName, String foodDesc, Integer weight, String systemPrompt) {
+        Assert.hasText(foodName, "食物名称不能为空");
+
+        String url = buildUrl(properties.getEstimatePath());
+        log.info("调用Python热量估算接口: foodName={}, foodDesc={}, weight={}, url={}", foodName, foodDesc, weight, url);
+
+        try {
+            HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
+
+            // 构造请求体：food_name和food_desc分别传入Python
+            Map<String, Object> body = new HashMap<>(4);
+            body.put("food_name", foodName);
+            body.put("food_desc", foodDesc != null ? foodDesc : "");
+            body.put("weight", weight != null ? weight : 200);
+            body.put("system_prompt", systemPrompt != null ? systemPrompt : "");
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            PythonApiResponseVO<Map<String, Object>> result = parseResponse(
+                    response.getBody(), new TypeReference<>() {});
+
+            if (result.isSuccess()) {
+                Map<String, Object> data = result.getData();
+                if (data == null || data.get("total_calorie") == null) {
+                    log.warn("Python热量估算无有效结果: foodName={}", foodName);
+                    throw new FastApiBusinessException(BizMsgEnum.AI_ESTIMATE_NO_RESULT.getMessage());
+                }
+
+                BigDecimal totalCalorie = new BigDecimal(data.get("total_calorie").toString())
+                        .setScale(1, java.math.RoundingMode.HALF_UP);
+                log.info("Python热量估算成功: foodName={}, totalCalorie={}", foodName, totalCalorie);
+                return totalCalorie;
+            } else {
+                log.warn("Python热量估算业务失败: foodName={}, code={}, msg={}",
+                        foodName, result.getCode(), result.getMsg());
+                throw new FastApiBusinessException(
+                        BizMsgEnum.AI_ESTIMATE_FAILED.getMessage() + ": " + result.getMsg());
+            }
+        } catch (RestClientException e) {
+            log.warn("Python热量估算网络异常(将重试): foodName={}, error={}", foodName, e.getMessage());
+            throw e;
+        } catch (FastApiBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Python热量估算未知异常: foodName={}, error={}", foodName, e.getMessage(), e);
+            throw new FastApiBusinessException(
+                    BizMsgEnum.AI_ESTIMATE_FAILED.getMessage() + ": " + e.getMessage(), e);
+        }
     }
+
+    // ==================== 预留方法 ====================
 
     /**
      * 调用Python对话接口（预留）

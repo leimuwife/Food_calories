@@ -4,6 +4,7 @@ from loguru import logger
 from typing import Optional
 
 from services.vector_service import get_vector_service
+from services.search_service import get_search_service
 from utils.response import success_response, error_response, ErrorCode, ApiResponse
 from utils.auth import verify_api_key
 from utils.md5 import calculate_md5, verify_md5
@@ -244,8 +245,8 @@ async def search_knowledge(
     增加参数校验：topk合法区间1-20
     增加score >= 0.75阈值过滤
     """
-    # 获取向量服务实例
-    vec_service = get_vector_service()
+    # 获取检索服务实例（与入库服务解耦，专注检索业务）
+    search_service = get_search_service()
 
     # ========== 参数校验 ==========
     if not query or not query.strip():
@@ -260,7 +261,7 @@ async def search_knowledge(
     logger.info("收到知识库检索请求: query={}, topk={}", query[:50], topk)
 
     try:
-        results = vec_service.search(query, topk)
+        results = search_service.search(query, topk)
 
         result_data = {
             "query": query,

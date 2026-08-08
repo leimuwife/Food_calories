@@ -1,5 +1,6 @@
 package com.nutrition.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.nutrition.entity.Attachment;
 import com.nutrition.mapper.AttachmentMapper;
 import com.nutrition.service.AttachmentService;
@@ -147,8 +148,10 @@ public class AttachmentServiceImpl implements AttachmentService {
 
         ossUtil.delete(attachment.getFileUrl());
 
-        attachment.setDeleteFlag(1);
-        attachmentMapper.updateById(attachment);
+        // MyBatis-Plus全局配置了logic-delete-field，updateById会忽略delete_flag，需用UpdateWrapper显式更新
+        attachmentMapper.update(null, new LambdaUpdateWrapper<Attachment>()
+                .set(Attachment::getDeleteFlag, 1)
+                .eq(Attachment::getId, id));
 
         log.info("附件删除成功: id={}", id);
         return true;

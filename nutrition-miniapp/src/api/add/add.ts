@@ -49,11 +49,11 @@ export async function addDietRecord(data: DietRecordParam, filePath?: string): P
   return result.data
 }
 
-export function estimateCalories(description: string, weight?: number) {
+export function estimateCalories(foodName: string, foodDesc: string, weight?: number) {
   return request<{ totalCalorie: number }>({
     url: '/api/ai/estimate-calorie',
     method: 'GET',
-    params: { foodDesc: description, weight },
+    params: { foodName, foodDesc, weight },
   })
 }
 

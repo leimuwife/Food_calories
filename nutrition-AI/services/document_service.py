@@ -1,4 +1,5 @@
 """文档处理服务 - 文档解析与切片"""
+import json
 import os
 import tempfile
 from typing import List, Tuple
@@ -193,27 +194,33 @@ class DocumentService:
         """
         将单个JSON对象转换为通顺可读的自然语言文本
 
+        去除序号前缀等模板噪声，让核心内容占据语义主导地位，
+        提升向量检索的召回准确率。
+
         Args:
             obj: JSON字典
-            index: 记录序号（可选）
+            index: 记录序号（保留参数兼容性，不再拼入文本）
 
         Returns:
             自然语言文本
         """
-        prefix = f"第{index}条记录：" if index else ""
+        # 食物数据：food_name + calorie → 自然语句，去除模板噪声
+        food_name = obj.get("food_name")
+        calorie = obj.get("calorie")
+        if food_name and calorie is not None:
+            return f"{food_name}，每100克热量{calorie}千卡。"
+
+        # 通用处理：键值对拼接为自然语句（不再添加序号前缀）
         parts = []
         for key, value in obj.items():
-            # 将键名中的下划线、驼峰转为可读中文描述
             readable_key = key.replace("_", " ").replace("-", " ")
             if isinstance(value, (dict, list)):
-                # 嵌套结构递归处理
-                import json
                 value_str = json.dumps(value, ensure_ascii=False)
             else:
                 value_str = str(value)
             parts.append(f"{readable_key}：{value_str}")
 
-        return prefix + "；".join(parts) + "。"
+        return "；".join(parts) + "。"
 
     def split_document(self, text: str, filename: str) -> List[Document]:
         """
@@ -258,6 +265,9 @@ class DocumentService:
         """
         完整处理流程：解析 -> 切片
 
+        JSON/JSONL文件特殊处理：每条记录独立成一个Document，不走字符切片，
+        确保单条食物数据（如"牛蛙"）能被精确召回。
+
         Args:
             file_content: 文件二进制内容
             filename: 文件名
@@ -270,10 +280,116 @@ class DocumentService:
             supported = ", ".join(SUPPORTED_FORMATS)
             raise ValueError(f"不支持的文件格式，支持的格式: {supported}")
 
-        # 解析文档
-        text = self.parse_document(file_content, filename)
+        ext = os.path.splitext(filename.lower())[1]
 
-        # 切片
+        # JSON/JSONL文件：每条记录独立成片，不走RecursiveCharacterTextSplitter
+        if ext in (".json", ".jsonl"):
+            chunks = self._parse_json_to_documents(file_content, filename)
+            logger.info("JSON/JSONL独立切片完成: filename={}, records={}", filename, len(chunks))
+            return chunks, len(chunks)
+
+        # 其他格式：解析 -> 字符切片
+        text = self.parse_document(file_content, filename)
         chunks = self.split_document(text, filename)
 
         return chunks, len(chunks)
+
+    @staticmethod
+    def _create_food_document(obj: dict, filename: str, index: int) -> Document:
+        """
+        创建食物数据Document
+
+        关键设计：page_content仅存食物名（用于embedding，最大化名称权重），
+        完整营养信息存入metadata["nutrition_text"]（用于检索返回展示）。
+        这样向量只编码食物名称，不被"每100克热量"等模板噪声稀释。
+        """
+        food_name = str(obj.get("food_name"))
+        calorie = obj.get("calorie")
+        return Document(
+            page_content=food_name,
+            metadata={
+                "filename": filename,
+                "chunk_index": index,
+                "nutrition_text": f"{food_name}，每100克热量{calorie}千卡。"
+            }
+        )
+
+    @staticmethod
+    def _is_food_record(obj: dict) -> bool:
+        """判断JSON对象是否为食物数据（同时含food_name和calorie）"""
+        return bool(obj.get("food_name")) and obj.get("calorie") is not None
+
+    def _parse_json_to_documents(self, file_content: bytes, filename: str) -> List[Document]:
+        """
+        将JSON/JSONL文件中每条记录解析为独立的Document
+
+        JSONL：每行一个JSON对象，每行一个Document
+        JSON数组：每个元素一个Document
+        JSON对象：单个Document
+
+        食物数据（含food_name+calorie）特殊处理：
+        page_content仅存食物名用于embedding，完整营养信息存入metadata。
+
+        Args:
+            file_content: 文件二进制内容
+            filename: 文件名
+
+        Returns:
+            Document列表，每条记录一个Document
+        """
+        # 解码
+        try:
+            text_raw = file_content.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                text_raw = file_content.decode("gbk")
+            except UnicodeDecodeError:
+                raise ValueError("JSON文件编码无法识别，请使用UTF-8编码")
+
+        ext = os.path.splitext(filename.lower())[1]
+        documents = []
+
+        if ext == ".jsonl":
+            # JSONL：逐行解析，每行一个Document
+            lines = [line.strip() for line in text_raw.strip().splitlines() if line.strip()]
+            for index, line in enumerate(lines, 1):
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict):
+                        if self._is_food_record(obj):
+                            documents.append(self._create_food_document(obj, filename, index))
+                        else:
+                            text = self._json_object_to_text(obj, index)
+                            documents.append(Document(page_content=text, metadata={
+                                "filename": filename, "chunk_index": index
+                            }))
+                except json.JSONDecodeError:
+                    logger.warning("JSONL第{}行解析失败，跳过: {}", index, line[:80])
+        else:
+            # 标准JSON
+            try:
+                data = json.loads(text_raw)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"JSON格式解析失败: {str(e)}")
+
+            if isinstance(data, list):
+                for index, item in enumerate(data, 1):
+                    if isinstance(item, dict):
+                        if self._is_food_record(item):
+                            documents.append(self._create_food_document(item, filename, index))
+                        else:
+                            text = self._json_object_to_text(item, index)
+                            documents.append(Document(page_content=text, metadata={
+                                "filename": filename, "chunk_index": index
+                            }))
+            elif isinstance(data, dict):
+                if self._is_food_record(data):
+                    documents.append(self._create_food_document(data, filename, 1))
+                else:
+                    text = self._json_object_to_text(data)
+                    documents.append(Document(page_content=text, metadata={
+                        "filename": filename, "chunk_index": 1
+                    }))
+
+        logger.info("JSON解析为独立文档: filename={}, records={}", filename, len(documents))
+        return documents

@@ -71,7 +71,6 @@ public class FoodNutritionCacheRunner implements ApplicationRunner {
             }
 
             int totalCount = allNutritionData.size();
-            log.info("查询到食物营养数据：{}条", totalCount);
 
             // ========== 第2步：构建精简营养数据Map ==========
             Map<Object, Object> nutritionMap = new HashMap<>(totalCount);
@@ -83,18 +82,15 @@ public class FoodNutritionCacheRunner implements ApplicationRunner {
 
             // ========== 第3步：清空旧缓存并批量写入新数据 ==========
             try {
-                // 先删除旧缓存
                 redisTemplate.delete(REDIS_HASH_KEY);
-                log.debug("已删除旧的食物营养缓存");
 
-                // 分批写入，避免单次操作数据量过大
                 int batchCount = (int) Math.ceil((double) nutritionMap.size() / BATCH_SIZE);
                 int currentIndex = 0;
 
                 for (int i = 0; i < batchCount; i++) {
                     int endIndex = Math.min(currentIndex + BATCH_SIZE, nutritionMap.size());
                     Map<Object, Object> batchMap = new HashMap<>();
-                    
+
                     int count = 0;
                     for (Map.Entry<Object, Object> entry : nutritionMap.entrySet()) {
                         if (count >= currentIndex && count < endIndex) {
@@ -103,12 +99,10 @@ public class FoodNutritionCacheRunner implements ApplicationRunner {
                         count++;
                     }
 
-                    redisTemplate.opsForHash().putAll(REDIS_HASH_KEY, batchMap);
-                    log.debug("第{}批写入缓存完成：{}条", i + 1, batchMap.size());
+                    redisTemplate.opsForHash().putAll(REDIS_HASH_KEY, batchMap);                  
                     currentIndex = endIndex;
                 }
 
-                // 设置过期时间
                 redisTemplate.expire(REDIS_HASH_KEY, REDIS_EXPIRE_DAYS, TimeUnit.DAYS);
 
                 log.info("食物营养数据Redis缓存预热成功！");
@@ -116,15 +110,13 @@ public class FoodNutritionCacheRunner implements ApplicationRunner {
                 log.info("  - Redis Hash Key：{}", REDIS_HASH_KEY);
                 log.info("  - 过期时间：{}天", REDIS_EXPIRE_DAYS);
             } catch (Exception e) {
-                log.error("Redis写入失败，食物营养数据未预热到缓存: error={}", e.getMessage(), e);
-                log.warn("Redis连接失败，不阻断项目启动，后续查询将直连MySQL");
+                log.error("食物营养数据Redis缓存预热失败: error={}", e.getMessage(), e);
             }
 
             log.info("========== 食物营养数据Redis缓存预热完成 ==========");
 
         } catch (Exception e) {
             log.error("食物营养数据缓存预热异常: error={}", e.getMessage(), e);
-            log.warn("缓存预热失败，不阻断项目启动，后续查询将直连MySQL");
         }
     }
 

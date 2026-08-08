@@ -18,6 +18,7 @@ from loguru import logger
 
 from config.settings import settings
 from routers.rag import router as rag_router
+from routers.ai import router as ai_router
 from utils.response import ApiResponse
 from services.vector_service import get_vector_service
 
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
 
     # 注册路由
     app.include_router(rag_router)
+    app.include_router(ai_router)
 
     @app.get("/", response_model=ApiResponse)
     async def root() -> ApiResponse:

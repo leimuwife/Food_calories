@@ -18,6 +18,8 @@ export interface KnowledgeDocument {
   fileMd5: string
   /** 附件在线访问地址（OSS） */
   fileUrl: string
+  /** 文档状态：1正常 2向量入库中 3入库失败 4已删除 */
+  status?: number
 }
 
 /**

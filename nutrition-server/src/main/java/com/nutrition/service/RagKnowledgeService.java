@@ -2,6 +2,7 @@ package com.nutrition.service;
 
 import com.nutrition.entity.RagKnowledgeDocument;
 import com.nutrition.vo.KnowledgeDocumentVO;
+import com.nutrition.vo.KnowledgeUploadVO;
 import com.nutrition.vo.PageVO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,9 +16,9 @@ public interface RagKnowledgeService {
      *
      * @param file 上传文件
      * @param userId 上传管理员ID
-     * @return 上传结果
+     * @return 上传结果（包含success/duplicate/document，避免通过异常传递重复信号导致axios拦截器误判）
      */
-    KnowledgeDocumentVO uploadDocument(MultipartFile file, Long userId);
+    KnowledgeUploadVO uploadDocument(MultipartFile file, Long userId);
 
     /**
      * 分页查询文档列表

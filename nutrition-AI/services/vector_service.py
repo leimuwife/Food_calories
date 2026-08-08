@@ -12,11 +12,6 @@ from constants.global_constants import VectorConstants
 
 class VectorService:
     def __init__(self) -> None:
-        if hasattr(self, "_initialized"):
-            logger.info("复用已经初始化完毕的VectorService单例，直接返回")
-            return
-        self._initialized = True
-
         api_key = settings.vector_api_key.strip()
         endpoint = settings.vector_endpoint.strip()
         logger.info("正在初始化DashVector客户端: endpoint={}, collection={}",
@@ -191,17 +186,23 @@ class VectorService:
 
                 logger.info("处理分片批次: [{}-{}), 批次大小={}", batch_start, batch_end, len(batch))
 
-                # 1. 计算本批次的Embedding向量
-                texts = [doc.page_content for doc in batch]
-                batch_embeddings = []
+                # 1. 批量计算Embedding向量（DashScope text-embedding-v4 单次最多25条）
+                #    入库文本添加 document: 前缀，帮助Embedding模型识别知识库文档类型
+                texts = [
+                    f"{VectorConstants.DOCUMENT_PREFIX}{doc.page_content}"
+                    for doc in batch
+                ]
 
                 embed_start = time.time()
-                for text in texts:
-                    vec = self.embeddings.embed_query(text)
-                    batch_embeddings.append(vec)
+                batch_embeddings = []
+                for embed_start_idx in range(0, len(texts), VectorConstants.EMBEDDING_BATCH_SIZE):
+                    embed_end_idx = min(embed_start_idx + VectorConstants.EMBEDDING_BATCH_SIZE, len(texts))
+                    embed_batch = texts[embed_start_idx:embed_end_idx]
+                    vectors = self.embeddings.embed_documents(embed_batch)
+                    batch_embeddings.extend(vectors)
                 embed_cost = (time.time() - embed_start) * 1000
-                logger.info("嵌入耗时: batch=[{}-{}], count={}, cost={:.1f}ms",
-                            batch_start, batch_end, len(batch), embed_cost)
+                logger.info("嵌入耗时: batch=[{}-{}], count={}, embed_batch_size={}, cost={:.1f}ms",
+                            batch_start, batch_end, len(batch), VectorConstants.EMBEDDING_BATCH_SIZE, embed_cost)
 
                 # 2. 构建本批次的Doc列表（官方格式：Doc(id, vector, fields)）
                 docs_to_insert = []
@@ -214,7 +215,7 @@ class VectorService:
                             id=chunk_id,
                             vector=vec,
                             fields={
-                                "text": doc.page_content,
+                                "text": texts[i],  # 已带 document: 前缀
                                 "doc_id": doc_id,
                                 "file_md5": file_md5,
                                 "chunk_index": str(chunk_index),
@@ -386,8 +387,12 @@ class VectorService:
                     filtered_count += 1
                     continue
 
+                # 去除入库时添加的 document: 前缀，返回纯净文本
+                raw_text = doc.fields.get("text", "")
+                clean_text = raw_text[len(VectorConstants.DOCUMENT_PREFIX):] if raw_text.startswith(VectorConstants.DOCUMENT_PREFIX) else raw_text
+
                 search_results.append({
-                    "text": doc.fields.get("text", ""),
+                    "text": clean_text,
                     "score": score,
                     "doc_id": doc.fields.get("doc_id", ""),
                     "file_md5": doc.fields.get("file_md5", ""),
@@ -454,10 +459,13 @@ class VectorService:
             return {"error": str(e)}
 
 
-# -------------------------- 懒加载单例入口（重点改动） --------------------------
+# -------------------------- 懒加载单例入口 --------------------------
 __instance: Optional["VectorService"] = None
 
 
 def get_vector_service() -> VectorService:
-    """获取VectorService实例（每次新建）"""
-    return VectorService()
+    """获取VectorService单例实例（首次调用初始化，后续复用）"""
+    global __instance
+    if __instance is None:
+        __instance = VectorService()
+    return __instance

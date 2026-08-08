@@ -6,7 +6,7 @@
         <h2 class="page-title">知识库更新</h2>
         <p class="page-desc">
           上传文档会自动解析文本并入向量知识库，用于AI食材热量问答检索。
-          支持 PDF、DOCX、DOC、TXT、MD、JSON 格式，单文件上限 20MB。
+          支持 PDF、DOCX、DOC、TXT、MD、JSON、JSONL 格式，单文件上限 20MB。
         </p>
       </div>
       <div class="header-actions">
@@ -40,10 +40,19 @@
         v-loading="tableLoading"
         style="width: 100%"
       >
-        <el-table-column prop="fileName" label="文档名称" min-width="260" show-overflow-tooltip />
-        <el-table-column prop="fileSizeText" label="文件大小" width="120" align="center" />
+        <el-table-column prop="fileName" label="文档名称" min-width="200" show-overflow-tooltip />
+        <el-table-column label="入库状态" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 1" type="success" effect="light">正常</el-tag>
+            <el-tag v-else-if="row.status === 2" type="primary" effect="light">向量入库中</el-tag>
+            <el-tag v-else-if="row.status === 3" type="danger" effect="light">入库失败</el-tag>
+            <el-tag v-else-if="row.status === 4" type="info" effect="light">已删除</el-tag>
+            <el-tag v-else effect="plain">未知</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="fileSizeText" label="文件大小" width="110" align="center" />
         <el-table-column prop="uploadTime" label="上传时间" width="180" align="center" />
-        <el-table-column prop="fileMd5" label="文件MD5" width="280" show-overflow-tooltip />
+        <el-table-column prop="fileMd5" label="文件MD5" width="340" show-overflow-tooltip />
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="scope">
             <el-button type="text" size="small" @click="handleDeleteDocument(scope.row)">
@@ -94,7 +103,7 @@
         <div class="upload-placeholder">
           <el-icon class="upload-icon"><UploadFilled /></el-icon>
           <div class="upload-text">将文件拖到此处，或<span class="upload-link">点击选择</span></div>
-          <div class="upload-hint">支持 PDF、DOCX、DOC、TXT、MD、JSON 格式，单文件 ≤ 20MB</div>
+          <div class="upload-hint">支持 PDF、DOCX、DOC、TXT、MD、JSON、JSONL 格式，单文件 ≤ 20MB</div>
         </div>
       </el-upload>
 
@@ -125,8 +134,23 @@ import {
   type KnowledgeDocument,
 } from '../../api/dashvector'
 
+/**
+ * 字节大小转可读格式
+ */
+function formatFileSize(bytes: number | undefined | null): string {
+  if (!bytes || bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let size = bytes
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024
+    i++
+  }
+  return `${size.toFixed(size >= 10 || i === 0 ? 0 : 2)} ${units[i]}`
+}
+
 // ==================== 允许的文件格式 ====================
-const ALLOWED_EXTENSIONS = '.pdf,.docx,.doc,.txt,.md,.json'
+const ALLOWED_EXTENSIONS = '.pdf,.docx,.doc,.txt,.md,.json,.jsonl'
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 
 // ==================== 文档列表相关 ====================
@@ -151,13 +175,19 @@ onMounted(() => {
 async function loadDocumentList() {
   tableLoading.value = true
   try {
-    const response = await getKnowledgeList({
-      keyword: searchKeyword.value || undefined,
-      pageNum: currentPage.value,
-      pageSize: pageSize.value,
-    })
-    documentList.value = response.data.records || []
-    total.value = response.data.total || 0
+      const response = await getKnowledgeList({
+        keyword: searchKeyword.value || undefined,
+        pageNum: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const records = (response.data.records || []) as KnowledgeDocument[]
+      // 此处就是需要修改的 map 代码
+      documentList.value = records.map((item) => ({
+        ...item,
+        status: Number(item.status),
+        fileSizeText: formatFileSize(item.fileSize),
+      }))
+      total.value = response.data.total || 0
   } catch {
     ElMessage.error('加载文档列表失败')
   } finally {
@@ -301,6 +331,8 @@ async function handleUploadSubmit() {
 
       const response = await uploadKnowledge(formData)
 
+      // axios 响应拦截器已保证 code===200 才会进入 then 分支
+      // 直接根据 KnowledgeUploadVO 的 duplicate / success 字段判断即可
       if (response.data?.duplicate) {
         duplicateCount++
         ElMessage.warning(`文件「${rawFile.name}」已存在知识库，无需重复上传`)
@@ -308,10 +340,12 @@ async function handleUploadSubmit() {
         successCount++
       } else {
         failCount++
+        ElMessage.error(`文件「${rawFile.name}」上传失败：响应数据异常`)
       }
-    } catch {
+    } catch (err: any) {
       failCount++
-      ElMessage.error(`文件「${rawFile.name}」上传失败`)
+      const msg = err?.message || '未知错误'
+      ElMessage.error(`文件「${rawFile.name}」上传失败：${msg}`)
     }
 
     uploadProgress.value = Math.round(((i + 1) / fileList.value.length) * 100)

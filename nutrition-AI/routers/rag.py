@@ -122,7 +122,12 @@ async def upload_document(
 
 @doc_router.delete("/delete", dependencies=[Depends(verify_api_key)])
 async def delete_document(doc_id: str = Query(..., description="文档ID")) -> ApiResponse:
-    """知识库文档删除接口（分页删除）"""
+    """
+    知识库文档删除接口（分页删除）
+
+    说明：删除流程由Java同步调用本接口，Java通过HTTP响应判断删除结果，
+    无需通过回调更新Java端文档状态——避免回调把"已删除"状态覆盖回"正常"。
+    """
     # 获取向量服务实例
     vec_service = get_vector_service()
 
@@ -135,20 +140,14 @@ async def delete_document(doc_id: str = Query(..., description="文档ID")) -> A
     try:
         deleted_count = vec_service.delete_by_doc_id(doc_id)
 
+        result_data = {
+            "doc_id": doc_id,
+            "deleted_count": deleted_count,
+        }
         if deleted_count > 0:
-            callback_result = await callback_service.notify_delete_success(doc_id, deleted_count)
-            result_data = {
-                "doc_id": doc_id,
-                "deleted_count": deleted_count,
-                "callback_success": callback_result
-            }
             return success_response(result_data, "文档删除成功")
         else:
-            result_data = {
-                "doc_id": doc_id,
-                "deleted_count": 0,
-                "message": "未找到对应的向量数据"
-            }
+            result_data["message"] = "未找到对应的向量数据"
             return success_response(result_data, "未找到需要删除的向量")
 
     except Exception as e:

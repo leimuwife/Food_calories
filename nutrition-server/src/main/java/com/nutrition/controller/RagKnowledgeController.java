@@ -40,7 +40,7 @@ public class RagKnowledgeController {
      * @return 上传结果
      */
     @PostMapping("/upload")
-    @Operation(summary = "上传知识库文档", description = "上传文档至RAG知识库，支持pdf/txt/md/docx/json等格式")
+    @Operation(summary = "上传知识库文档", description = "上传文档至RAG知识库，支持pdf/txt/md/docx/json/jsonl等格式")
     public Result<KnowledgeUploadVO> uploadDocument(
             HttpServletRequest request,
             @RequestParam("file") MultipartFile file) {
@@ -56,12 +56,14 @@ public class RagKnowledgeController {
         }
 
         try {
-            KnowledgeDocumentVO vo = ragKnowledgeService.uploadDocument(file, userId);
-            return Result.ok("文档上传成功，正在进行向量入库",
-                    new KnowledgeUploadVO(true, false, vo));
-        } catch (IllegalStateException e) {
-            log.warn("文件重复: {}", e.getMessage());
-            return Result.fail(e.getMessage());
+            // Service 直接返回 KnowledgeUploadVO（success=true 正常成功；duplicate=true 文件重复）
+            // 两者 code 均为 200，避免 axios 拦截器误判 duplicate 为失败
+            KnowledgeUploadVO uploadVo = ragKnowledgeService.uploadDocument(file, userId);
+
+            if (Boolean.TRUE.equals(uploadVo.getDuplicate())) {
+                return Result.ok(BizMsgEnum.RAG_FILE_DUPLICATE.getMessage(), uploadVo);
+            }
+            return Result.ok("文档上传成功，正在进行向量入库", uploadVo);
         } catch (Exception e) {
             log.error("{}: {}", BizMsgEnum.RAG_UPLOAD_FAILED.getMessage(), e.getMessage(), e);
             return Result.fail(BizMsgEnum.RAG_UPLOAD_FAILED.getMessage() + ": " + e.getMessage());

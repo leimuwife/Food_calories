@@ -55,26 +55,6 @@ class CallbackService:
 
         return await self._send_callback(payload)
 
-    async def notify_delete_success(self, doc_id: str, deleted_count: int) -> bool:
-        """
-        通知Java后端删除成功
-
-        Args:
-            doc_id: 文档ID
-            deleted_count: 删除数量
-
-        Returns:
-            是否回调成功
-        """
-        payload = {
-            "doc_id": doc_id,
-            "deleted_count": deleted_count,
-            "status": "success",
-            "message": "文档删除成功"
-        }
-
-        return await self._send_callback(payload)
-
     async def notify_update_success(self, doc_id: str, chunk_count: int) -> bool:
         """
         通知Java后端更新成功

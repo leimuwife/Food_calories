@@ -62,7 +62,7 @@ class DocumentService:
             elif ext == ".doc":
                 # .doc格式需要特殊处理（暂不支持，提示转换）
                 raise ValueError("暂不支持.doc格式，请转换为.docx或.pdf后重试")
-            elif ext == ".json":
+            elif ext in (".json", ".jsonl"):
                 text = self._parse_json(file_content)
             else:
                 raise ValueError(f"不支持的文件格式: {ext}")
@@ -125,9 +125,10 @@ class DocumentService:
         解析JSON结构化文件，将JSON数据转换为通顺的自然语言文本
         禁止直接将原始json字符串送入文本分割器，防止字段结构被切片拆分、破坏语义
 
-        支持两种格式：
+        支持三种格式：
         1. 根节点为数组：循环遍历每一条结构体，拼接成通顺易懂的自然语言文本
         2. 根节点为单个json对象：格式化转为可读文本
+        3. JSONL格式（每行一个JSON对象）：逐行解析后拼接
         """
         import json
 
@@ -140,6 +141,30 @@ class DocumentService:
             except UnicodeDecodeError:
                 raise ValueError("JSON文件编码无法识别，请使用UTF-8编码")
 
+        # 尝试解析为JSONL（每行一个JSON对象）
+        lines = [line.strip() for line in text_raw.strip().splitlines() if line.strip()]
+        jsonl_objects = []
+        is_jsonl = True
+        for line in lines:
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict):
+                    jsonl_objects.append(obj)
+                else:
+                    is_jsonl = False
+                    break
+            except json.JSONDecodeError:
+                is_jsonl = False
+                break
+
+        if is_jsonl and len(jsonl_objects) > 1:
+            # JSONL格式：每行一个JSON对象
+            text_parts = []
+            for index, item in enumerate(jsonl_objects, 1):
+                text_parts.append(self._json_object_to_text(item, index))
+            return "\n\n".join(text_parts)
+
+        # 标准JSON格式
         try:
             data = json.loads(text_raw)
         except json.JSONDecodeError as e:

@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName("rag_knowledge_document")
 public class RagKnowledgeDocument extends Common {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /** 文档名称 */

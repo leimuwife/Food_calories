@@ -59,7 +59,7 @@ class CommonConstants:
 class FileConstants:
     """文件处理相关常量"""
     # 支持的文件格式
-    SUPPORTED_FORMATS: List[str] = [".pdf", ".txt", ".md", ".docx", ".doc", ".json"]
+    SUPPORTED_FORMATS: List[str] = [".pdf", ".txt", ".md", ".docx", ".doc", ".json", ".jsonl"]
 
     # 文件大小限制（字节）
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -98,6 +98,9 @@ class VectorConstants:
     DIMENSION_768 = 768
     # 当前项目使用的向量维度（必须与DashVector集合维度、Embedding输出维度一致）
     VECTOR_DIMENSION = 1024
+
+    # 文档内容前缀（标识知识库文档，帮助Embedding模型区分文档类型）
+    DOCUMENT_PREFIX = "document: "
 
 
 # ==================== 安全相关常量 ====================

@@ -8,10 +8,12 @@ import com.nutrition.entity.Attachment;
 import com.nutrition.entity.RagKnowledgeDocument;
 import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.enums.RagDocumentStatusEnum;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.nutrition.mapper.RagKnowledgeDocumentMapper;
 import com.nutrition.service.AttachmentService;
 import com.nutrition.service.RagKnowledgeService;
 import com.nutrition.vo.KnowledgeDocumentVO;
+import com.nutrition.vo.KnowledgeUploadVO;
 import com.nutrition.vo.PageVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,10 +49,10 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
     private final FastApiClient fastApiClient;
     private final FastApiProperties fastApiProperties;
     private final AttachmentService attachmentService;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public KnowledgeDocumentVO uploadDocument(MultipartFile file, Long userId) {
+    public KnowledgeUploadVO uploadDocument(MultipartFile file, Long userId) {
         String originalFilename = file.getOriginalFilename();
         log.info("知识库文档上传开始: fileName={}, userId={}", originalFilename, userId);
 
@@ -68,58 +70,94 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
 
             if (existing != null) {
                 log.warn("文件重复: fileMd5={}, existingId={}", fileMd5, existing.getId());
-                throw new IllegalStateException(BizMsgEnum.RAG_FILE_DUPLICATE.getMessage());
+                // 直接返回 duplicate=true，不通过异常传递（避免 code=500 导致 axios 拦截器 reject）
+                KnowledgeDocumentVO existVo = buildVoFromDocument(existing);
+                return new KnowledgeUploadVO(false, true, existVo);
             }
 
-            // 3. 上传文件到OSS，保存附件记录到sys_file表（参考食物图片存储方式）
+            // 3. 上传文件到OSS，保存附件记录到sys_file表
             Attachment attachment = attachmentService.upload(file, userId, "rag/");
             String fileIds = String.valueOf(attachment.getId());
             log.info("文件已上传OSS: fileName={}, attachmentId={}, url={}",
                     originalFilename, attachment.getId(), attachment.getFileUrl());
 
-            // 4. 保存文档记录（状态=向量入库中，file_ids关联附件表主键）
-            RagKnowledgeDocument document = new RagKnowledgeDocument();
-            document.setDocName(originalFilename);
-            document.setFileMd5(fileMd5);
-            document.setUploadUserId(userId);
-            document.setStatus(RagDocumentStatusEnum.PROCESSING.getCode());
-            document.setRemark("等待Python向量入库处理");
-            document.setVectorStoreId("");
-            document.setFileIds(fileIds);
-            document.setDeleteFlag(0);
-            documentMapper.insert(document);
-            log.info("文档记录已保存: docId={}, status={}, fileIds={}",
-                    document.getId(), RagDocumentStatusEnum.PROCESSING.getDesc(), fileIds);
+            // 4. 使用编程式事务保存文档记录（立即提交，避免Python回调时事务未提交导致查不到数据）
+            Long docId = transactionTemplate.execute(status -> {
+                RagKnowledgeDocument document = new RagKnowledgeDocument();
+                document.setDocName(originalFilename);
+                document.setFileMd5(fileMd5);
+                document.setUploadUserId(userId);
+                document.setStatus(RagDocumentStatusEnum.PROCESSING.getCode());
+                document.setRemark("等待Python向量入库处理");
+                document.setVectorStoreId("");
+                document.setFileIds(fileIds);
+                document.setDeleteFlag(0);
+                documentMapper.insert(document);
+                log.info("文档记录已保存并提交: docId={}, status={}, fileIds={}",
+                        document.getId(), RagDocumentStatusEnum.PROCESSING.getDesc(), fileIds);
+                return document.getId();
+            });
 
-            // 5. 调用Python FastAPI接口进行向量入库
+            // 5. 调用Python FastAPI接口进行向量入库（此时事务已提交，Python回调能查到数据）
             try {
                 boolean success = fastApiClient.uploadKnowledgeFile(
-                        file, document.getId(), fileMd5
+                        file, docId, fileMd5
                 );
 
                 if (!success) {
-                    updateStatusDirect(document.getId(), RagDocumentStatusEnum.FAILED,
+                    updateStatusDirect(docId, RagDocumentStatusEnum.FAILED,
                             BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + "，入库异常");
                     throw new RuntimeException(BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage());
                 }
 
-                log.info("已通知Python进行向量入库: docId={}", document.getId());
+                log.info("已通知Python进行向量入库: docId={}", docId);
             } catch (Exception e) {
-                log.error("Python调用异常: docId={}, error={}", document.getId(), e.getMessage(), e);
-                updateStatusDirect(document.getId(), RagDocumentStatusEnum.FAILED,
+                log.error("Python调用异常: docId={}, error={}", docId, e.getMessage(), e);
+                updateStatusDirect(docId, RagDocumentStatusEnum.FAILED,
                         BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + ": " + e.getMessage());
                 throw new RuntimeException(BizMsgEnum.RAG_PYTHON_CALL_FAILED.getMessage() + ": " + e.getMessage());
             }
 
-            return convertToVO(document, attachment);
+            // 重新查询文档用于构建VO（文档已在独立事务中提交）
+            RagKnowledgeDocument savedDoc = documentMapper.selectById(docId);
+            KnowledgeDocumentVO docVo = convertToVO(savedDoc, attachment);
+            return new KnowledgeUploadVO(true, false, docVo);
 
-        } catch (IllegalStateException e) {
-            log.warn("文档上传校验失败: {}", e.getMessage());
-            throw e;
         } catch (Exception e) {
             log.error("文档上传异常: file={}, error={}", originalFilename, e.getMessage(), e);
             throw new RuntimeException(BizMsgEnum.RAG_UPLOAD_FAILED.getMessage() + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * 根据文档实体查询附件并组装VO（用于重复文件的快速返回）
+     */
+    private KnowledgeDocumentVO buildVoFromDocument(RagKnowledgeDocument doc) {
+        KnowledgeDocumentVO vo = new KnowledgeDocumentVO();
+        vo.setId(doc.getId());
+        vo.setFileName(doc.getDocName());
+        vo.setFileMd5(doc.getFileMd5());
+        vo.setStatus(doc.getStatus());
+
+        List<Long> fileIdList = parseFileIds(doc.getFileIds());
+        if (!fileIdList.isEmpty()) {
+            Attachment attachment = attachmentService.getById(fileIdList.get(0));
+            if (attachment != null) {
+                vo.setFileSize(attachment.getFileSize());
+                vo.setFileUrl(attachment.getFileUrl());
+            } else {
+                vo.setFileSize(0L);
+            }
+        } else {
+            vo.setFileSize(0L);
+        }
+
+        if (doc.getCreateTime() != null) {
+            vo.setUploadTime(doc.getCreateTime());
+        } else {
+            vo.setUploadTime(LocalDateTime.now());
+        }
+        return vo;
     }
 
     @Override
@@ -177,7 +215,6 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             log.error("Python删除向量异常: docId={}, error={}", id, e.getMessage(), e);
         }
 
-        // 2. 删除关联的OSS附件（参考食物图片删除方式）
         List<Long> attachmentIds = parseFileIds(document.getFileIds());
         if (!attachmentIds.isEmpty()) {
             for (Long attachmentId : attachmentIds) {
@@ -190,23 +227,25 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             }
         }
 
-        // 3. 逻辑删除文档记录
-        document.setDeleteFlag(1);
+        // 3. 更新文档状态为"已删除"（updateById 仅更新 status，MyBatis-Plus 会忽略 delete_flag 字段）
         document.setStatus(RagDocumentStatusEnum.DELETED.getCode());
+        document.setDeleteFlag(1);
         documentMapper.updateById(document);
-        log.info("文档已删除: docId={}", id);
+        log.info("文档已删除: docId={}, status={}", id, RagDocumentStatusEnum.DELETED.getDesc());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateDocumentStatus(Long docId, Integer status, String vectorStoreId, String message) {
-        log.info("更新文档状态回调: docId={}, status={}, vectorStoreId={}", docId, status, vectorStoreId);
+        log.info("更新文档状态回调: docId={}, status={}, vectorStoreId={}, message={}", docId, status, vectorStoreId, message);
 
         RagKnowledgeDocument document = documentMapper.selectById(docId);
         if (document == null) {
-            log.warn("回调文档不存在: docId={}", docId);
+            log.warn("回调文档不存在或已被删除，跳过状态更新: docId={}", docId);
             return;
         }
+
+        log.info("回调前文档状态: docId={}, oldStatus={}, oldVectorStoreId={}", docId, document.getStatus(), document.getVectorStoreId());
 
         document.setStatus(status);
         if (vectorStoreId != null && !vectorStoreId.isEmpty()) {
@@ -215,8 +254,10 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
         if (message != null) {
             document.setRemark(message);
         }
-        documentMapper.updateById(document);
-        log.info("文档状态已更新: docId={}, status={}", docId, RagDocumentStatusEnum.getDescByCode(status));
+
+        log.info("准备更新文档: docId={}, newStatus={}, newVectorStoreId={}", docId, document.getStatus(), document.getVectorStoreId());
+        int rows = documentMapper.updateById(document);
+        log.info("文档状态已更新: docId={}, rows={}, status={}, vectorStoreId={}", docId, rows, document.getStatus(), document.getVectorStoreId());
     }
 
     /**

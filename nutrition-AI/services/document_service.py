@@ -301,23 +301,45 @@ class DocumentService:
 
         关键设计：page_content仅存食物名（用于embedding，最大化名称权重），
         完整营养信息存入metadata["nutrition_text"]（用于检索返回展示）。
-        这样向量只编码食物名称，不被"每100克热量"等模板噪声稀释。
+        这样向量只编码食物名称，不被content模板噪声稀释。
         """
         food_name = str(obj.get("food_name"))
-        calorie = obj.get("calorie")
+
+        # 优先使用原生 content 字段（用户已写好的完整营养描述，大模型可识别）
+        # 若无content则按独立字段 calorie/protein/fat/carbohydrate 拼装
+        nutrition_text = obj.get("content")
+        if not nutrition_text:
+            calorie = obj.get("calorie")
+            protein = obj.get("protein")
+            fat = obj.get("fat")
+            carbohydrate = obj.get("carbohydrate")
+
+            parts = [f"{food_name}"]
+            if calorie is not None:
+                parts.append(f"每100克热量{calorie}千卡")
+            if protein is not None:
+                parts.append(f"蛋白质{protein}克")
+            if fat is not None:
+                parts.append(f"脂肪{fat}克")
+            if carbohydrate is not None:
+                parts.append(f"碳水化合物{carbohydrate}克")
+            if len(parts) == 1:
+                parts.append("营养数据待补充")
+            nutrition_text = "，".join(parts) + "。"
+
         return Document(
             page_content=food_name,
             metadata={
                 "filename": filename,
                 "chunk_index": index,
-                "nutrition_text": f"{food_name}，每100克热量{calorie}千卡。"
+                "nutrition_text": nutrition_text
             }
         )
 
     @staticmethod
     def _is_food_record(obj: dict) -> bool:
-        """判断JSON对象是否为食物数据（同时含food_name和calorie）"""
-        return bool(obj.get("food_name")) and obj.get("calorie") is not None
+        """判断JSON对象是否为食物数据（含food_name即可；content或独立字段任选其一）"""
+        return bool(obj.get("food_name"))
 
     def _parse_json_to_documents(self, file_content: bytes, filename: str) -> List[Document]:
         """

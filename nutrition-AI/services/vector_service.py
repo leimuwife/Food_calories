@@ -5,9 +5,9 @@ from dashvector import Client, Doc
 from loguru import logger
 from typing import List, Optional, Dict, Any
 from langchain_core.documents import Document
-from langchain_community.embeddings.dashscope import DashScopeEmbeddings
 from config.settings import settings
 from constants.global_constants import VectorConstants
+from models import get_embedding_model
 
 
 class VectorService:
@@ -35,10 +35,8 @@ class VectorService:
             )
         logger.info("DashVector 客户端鉴权连通检测通过")
 
-        self.embeddings = DashScopeEmbeddings(
-            model=settings.embedding_model,
-            dashscope_api_key=settings.dashscope_api_key
-        )
+        # 复用全局Embedding模型单例（models包统一管理）
+        self.embeddings = get_embedding_model()
 
         self.collection = self._get_or_create_collection()
 

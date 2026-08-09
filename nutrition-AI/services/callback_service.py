@@ -11,7 +11,8 @@ class CallbackService:
     """Java回调服务"""
 
     def __init__(self) -> None:
-        self.callback_url = settings.java_callback_url
+        # 回调地址 = Java基础地址 + RAG回调路径（消除配置冗余，见settings.java_base_url）
+        self.callback_url = settings.java_base_url.rstrip("/") + settings.java_rag_callback_path
         self.timeout = 30.0
 
     async def notify_upload_success(self, doc_id: str, collection_id: str, chunk_count: int) -> bool:

@@ -49,7 +49,16 @@ class Settings(BaseSettings):
     llm_timeout: int = 60
 
     # ==================== Java回调配置 ====================
-    java_callback_url: str = "http://localhost:8088/api/rag/knowledge/callback"
+    # Java后端基础地址（前缀/api由WebConfig统一添加）
+    # 回调接口 = {java_base_url} + 接口路径：
+    #   RAG入库回调：POST {java_base_url}/rag/knowledge/callback
+    #   会话创建：   POST {java_base_url}/chat/session/create
+    #   会话历史：   GET  {java_base_url}/chat/session/{sessionId}/history
+    #   消息落盘：   POST {java_base_url}/chat/session/flush
+    java_base_url: str = "http://localhost:8088/api"
+
+    # RAG入库回调接口路径（相对java_base_url）
+    java_rag_callback_path: str = "/rag/knowledge/callback"
 
     # ==================== 日志配置 ====================
     log_level: str = "INFO"

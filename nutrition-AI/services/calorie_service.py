@@ -17,10 +17,10 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
-from langchain_openai import ChatOpenAI
 
 from config.settings import settings
 from constants.global_constants import VectorConstants
+from models import get_llm_model
 from services.search_service import get_search_service
 from services.redis_service import get_redis_service
 
@@ -40,70 +40,11 @@ class CalorieEstimateService:
         # 读取外置Prompt文件（禁止代码硬编码提示词）
         self.prompt = self._load_prompt()
 
-        # 从Redis读取LLM配置（Java端AiConfigCacheRunner预热，唯一数据源）
-        ai_config = self._load_llm_config()
-
-        # 初始化大模型（OpenAI兼容接口）
-        self.llm = ChatOpenAI(
-            model=ai_config["model"],
-            api_key=ai_config["api_key"],
-            base_url=ai_config["base_url"],
-            temperature=ai_config.get("temperature", 0.1),
-            timeout=settings.llm_timeout,
-            max_retries=1
-        )
+        # 获取LLM模型（models包统一管理，从Redis读取配置）
+        self.llm = get_llm_model()
 
         # 构建LCEL链
         self.chain = self._build_chain()
-
-    # ==================== LLM配置加载 ====================
-
-    def _load_llm_config(self) -> Dict[str, Any]:
-        """
-        从Redis读取Java端预热的AI配置（唯一数据源）
-
-        Java端存储字段为驼峰（modelName/apiUrl/apiKey/temperature），
-        此处统一转换为Python风格键名（model/api_key/base_url/temperature）
-
-        Raises:
-            CalorieEstimateException: Redis中无AI配置或配置不完整
-        """
-        try:
-            config = self.redis_service.get_ai_config()
-            if not config:
-                logger.error("Redis中无AI配置，请确保Java端已启动并预热AiConfigCacheRunner")
-                raise CalorieEstimateException("AI模型配置未就绪，请稍后重试")
-
-            # 字段映射：Java驼峰 → Python下划线风格
-            result = {
-                "model": config.get("modelName") or config.get("model_name"),
-                "base_url": config.get("apiUrl") or config.get("api_url"),
-                "api_key": config.get("apiKey") or config.get("api_key"),
-            }
-
-            # 校验必填字段
-            missing = [k for k, v in result.items() if not v]
-            if missing:
-                logger.error("Redis AI配置缺失字段: {}", missing)
-                raise CalorieEstimateException("AI模型配置不完整，请检查管理后台配置")
-
-            # temperature可能是字符串/数字（Java BigDecimal序列化），统一转float
-            temp = config.get("temperature")
-            if temp is not None:
-                try:
-                    result["temperature"] = float(temp)
-                except (TypeError, ValueError):
-                    pass
-
-            logger.info("LLM配置从Redis加载成功: model={}, base_url={}",
-                        result.get("model"), result.get("base_url"))
-            return result
-
-        except CalorieEstimateException:
-            raise
-        except Exception as e:
-            logger.error("Redis加载LLM配置异常: error={}", str(e))
-            raise CalorieEstimateException("AI模型配置加载失败，请稍后重试")
 
     # ==================== Prompt加载 ====================
 

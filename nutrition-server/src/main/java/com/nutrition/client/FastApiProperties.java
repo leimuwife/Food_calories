@@ -37,6 +37,6 @@ public class FastApiProperties {
     /** 连接超时（秒） */
     private int connectTimeout = 10;
 
-    /** 读取超时（秒） */
-    private int readTimeout = 60;
+    /** 读取超时（秒）- 大JSONL文件上传时Python处理耗时较长，默认120秒 */
+    private int readTimeout = 120;
 }

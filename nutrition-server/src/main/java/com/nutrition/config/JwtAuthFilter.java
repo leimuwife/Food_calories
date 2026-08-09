@@ -25,7 +25,7 @@ public class JwtAuthFilter implements Filter {
     private final JwtUtil jwtUtil;
     private final RedisCache redisCache;
 
-    /** 无需认证的路径 */
+    /** 无需认证的精确/前缀路径 */
     private static final String[] WHITE_LIST = {
             "/api/auth/login",
             "/api/auth/register",
@@ -35,6 +35,15 @@ public class JwtAuthFilter implements Filter {
             "/api/admin/login",
             // Python AI服务回调接口，使用API密钥鉴权，无需JWT
             "/api/rag/knowledge/callback",
+            // Python会话服务回调接口（精确路径，不放开前缀避免误放行前端接口）
+            "/api/chat/session/create",
+            "/api/chat/session/flush",
+    };
+
+    /** 无需认证的正则路径（含动态路径参数，如会话历史回调） */
+    private static final String[] WHITE_LIST_REGEX = {
+            // Python会话历史回调：/api/chat/session/{sessionId}/history
+            "^/api/chat/session/\\d+/history$",
     };
 
     @Override
@@ -56,14 +65,12 @@ public class JwtAuthFilter implements Filter {
         boolean hasToken = authHeader != null && authHeader.startsWith("Bearer ");
 
         // 白名单路径：有 token 则尝试解析，无 token 直接放行
-        for (String white : WHITE_LIST) {
-            if (path.startsWith(white)) {
-                if (hasToken) {
-                    tryParseToken(req, authHeader);
-                }
-                chain.doFilter(request, response);
-                return;
+        if (isWhiteListed(path)) {
+            if (hasToken) {
+                tryParseToken(req, authHeader);
             }
+            chain.doFilter(request, response);
+            return;
         }
 
         // 非白名单路径：必须有有效 token
@@ -99,6 +106,26 @@ public class JwtAuthFilter implements Filter {
         req.setAttribute("userId", userId);
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * 判断请求路径是否命中白名单（精确/前缀 + 正则）
+     *
+     * @param path 请求URI
+     * @return true=白名单路径，无需JWT认证
+     */
+    private boolean isWhiteListed(String path) {
+        for (String white : WHITE_LIST) {
+            if (path.startsWith(white)) {
+                return true;
+            }
+        }
+        for (String regex : WHITE_LIST_REGEX) {
+            if (path.matches(regex)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -21,6 +21,7 @@ from routers.rag import router as rag_router
 from routers.ai import router as ai_router
 from utils.response import ApiResponse
 from services.vector_service import get_vector_service
+from services.session_service import start_session_sweeper
 
 
 def setup_logging() -> None:
@@ -103,7 +104,7 @@ def create_app() -> FastAPI:
         logger.info("  - Embedding模型: {}", settings.embedding_model)
         logger.info("  - 切片配置: chunk_size={}, chunk_overlap={}",
                     settings.chunk_size, settings.chunk_overlap)
-        logger.info("  - Java回调地址: {}", settings.java_callback_url)
+        logger.info("  - Java回调地址: {}{}", settings.java_base_url, settings.java_rag_callback_path)
         logger.info("=" * 60)
 
         # 使用懒加载函数获取向量服务实例
@@ -113,6 +114,12 @@ def create_app() -> FastAPI:
             logger.info("向量库连接成功: {}", stats)
         except Exception as e:
             logger.warning("向量库初始化失败（将在首次调用时重试）: {}", str(e))
+
+        # 启动AI会话TTL后台扫描（缓存临近过期自动落盘MySQL）
+        try:
+            start_session_sweeper()
+        except Exception as e:
+            logger.warning("会话TTL扫描线程启动失败: {}", str(e))
 
         logger.info("服务启动完成!")
 

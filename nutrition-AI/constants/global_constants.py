@@ -119,6 +119,73 @@ class RedisConstants:
     # String结构，value为精简配置JSON（含modelName/apiUrl/apiKey/temperature/maxTokens/systemPrompt）
     AI_CONFIG_ENABLED_KEY = "ai:config:enabled"
 
+    # AI会话消息缓存Key前缀（Redis List，元素为JSON结构化消息 {"role":..., "content":...}）
+    SESSION_CACHE_PREFIX = "active:session:"
+
+    # AI会话消息缓存过期时间（秒）：12小时
+    SESSION_CACHE_TTL_SECONDS = 12 * 3600
+
+    # 获取会话历史时最多返回的消息条数（约10轮交互，每轮≈2条）
+    SESSION_HISTORY_MESSAGE_COUNT = 20
+
+    # 缓存临近过期提前落盘阈值（秒）：剩余TTL低于该值触发批量落盘，防止缓存过期丢数据
+    SESSION_TTL_SWEEP_THRESHOLD_SECONDS = 3600
+
+    # 后台落盘扫描间隔（秒）
+    SESSION_SWEEP_INTERVAL_SECONDS = 300
+
+
+# ==================== AI聊天会话常量 ====================
+
+class ChatConstants:
+    """AI聊天会话相关常量"""
+    # 合法角色枚举（与Java端 ChatRoleEnum 一一对应）
+    VALID_ROLES = ("user", "ai_thought", "tool_call", "tool_result", "ai_answer")
+
+
+# ==================== Agent工具常量 ====================
+
+class AgentConstants:
+    """ReAct Agent工具相关常量"""
+
+    # ---- 活动系数映射（Mifflin-St Jeor公式配套） ----
+    ACTIVITY_FACTORS = {
+        "久坐办公": 1.2,
+        "轻度活动": 1.375,
+        "中度活动": 1.55,
+        "高强度体力运动": 1.725,
+    }
+    # 默认活动等级
+    DEFAULT_ACTIVITY_LEVEL = "久坐办公"
+    # 用户未提供年龄时的默认估算年龄
+    DEFAULT_AGE = 25
+    # 温和减脂热量缺口区间（大卡/天）
+    MILD_DEFICIT_MIN = 300
+    MILD_DEFICIT_MAX = 500
+    # 高强度减脂热量缺口（大卡/天）
+    AGGRESSIVE_DEFICIT = 600
+    # 减脂摄入量修正系数：在缺口计算基础上再下降20%，使减脂区间整体摄入更低
+    MILD_DEFICIT_FACTOR = 0.8
+    AGGRESSIVE_DEFICIT_FACTOR = 0.8
+
+    # ---- 工具异常提示文本 ----
+    MSG_MISSING_PARAMS = "请向用户收集以下必要信息后再次调用：身高、体重、性别。"
+    MSG_NO_FOOD_MATCH = "当前知识库暂时没有匹配该条件的食物，请建议用户调整筛选条件或等待知识库更新。"
+    MSG_RAG_ERROR = "食物知识库检索服务暂时不可用，请稍后重试或基于已有知识回答用户。"
+    MSG_INVALID_ACTIVITY = "未识别的活动量等级，已按默认久坐办公计算。"
+
+    # ---- ReAct Agent循环相关 ----
+    # 最大工具调用轮次（防止无限循环调用工具）
+    MAX_AGENT_ITERATIONS = 5
+    # 工具调用错误兜底提示文本
+    MSG_AGENT_ERROR = "抱歉，我在处理过程中遇到了问题，请稍后重试。"
+    # 模型超时错误兜底提示文本
+    MSG_MODEL_TIMEOUT = "模型响应超时，请稍后重试。"
+
+    # ---- 食物检索相关 ----
+    # 检索食物时使用的topk（召回更多结果便于取最佳匹配）
+    FOOD_SEARCH_TOPK = 12
+
 
 # ==================== 安全相关常量 ====================
 

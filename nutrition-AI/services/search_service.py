@@ -116,23 +116,29 @@ class SearchService:
             search_cost = (time.time() - search_start) * 1000
             logger.info("检索耗时: query={}, cost={:.1f}ms, raw_count={}", query[:50], search_cost, len(results))
 
-            # 整理结果 + score阈值过滤（改动2: 阈值从 VectorConstants.SEARCH_SCORE_THRESHOLD 读取，禁止硬编码）
+            # 整理结果：
+            # 【注意】此处不做硬性距离阈值过滤，将裁决权交给上层业务：
+            #   - 食物名称查询场景：query和匹配名都很短，DashVector余弦对括号后缀不敏感，
+            #     "鸡蛋（红皮）"等正确结果的distance可能落在0.25~0.35之间，
+            #     过滤掉反而丢失正确条目。业务层可结合字面量匹配加分重排。
+            #   - 普通知识库文档检索：上层可自行设置合理阈值。
+            # 仅记录统计日志，便于观察"距离偏大"的条目数量。
             search_results = []
-            filtered_count = 0
+            soft_filtered_count = 0
 
             for doc in results:
                 score = float(doc.score) if hasattr(doc, "score") else 0.0
                 raw_text = doc.fields.get("text", "")
                 filename = doc.fields.get("filename", "")
-                logger.info("  召回结果: score={:.4f}, filename={}, text={}", score, filename, raw_text[:80])
-
-                # DashVector cosine distance: 值越小越相似，distance > 阈值的结果被过滤
                 if score > VectorConstants.SEARCH_SCORE_THRESHOLD:
-                    filtered_count += 1
-                    continue
+                    soft_filtered_count += 1
+                    logger.debug("  距离偏大(未强过滤): score={:.4f}, filename={}, text={}",
+                                 score, filename, raw_text[:60])
+                else:
+                    logger.info("  召回结果: score={:.4f}, filename={}, text={}",
+                                score, filename, raw_text[:80])
 
                 # 去除入库时添加的 document: 前缀，返回纯净文本
-                raw_text = doc.fields.get("text", "")
                 clean_text = raw_text[len(VectorConstants.DOCUMENT_PREFIX):] if raw_text.startswith(VectorConstants.DOCUMENT_PREFIX) else raw_text
 
                 search_results.append({
@@ -144,9 +150,9 @@ class SearchService:
                     "filename": doc.fields.get("filename", "")
                 })
 
-            if filtered_count > 0:
-                logger.info("检索结果过滤: 原始={}, 阈值过滤(distance>{})={}, 保留={}",
-                            len(results), VectorConstants.SEARCH_SCORE_THRESHOLD, filtered_count, len(search_results))
+            if soft_filtered_count > 0:
+                logger.info("检索距离分布: 原始={}, distance>{}(参考阈值)={}, 全部保留供业务裁决={}",
+                            len(results), VectorConstants.SEARCH_SCORE_THRESHOLD, soft_filtered_count, len(search_results))
 
             # DashVector cosine distance: 升序排列（距离越小越相似，排在前面）
             search_results.sort(key=lambda x: x["score"])
@@ -156,8 +162,8 @@ class SearchService:
             final_results = search_results[:final_count]
 
             total_cost = embed_cost + search_cost
-            logger.info("向量检索完成: query={}, recall={}, filtered={}, rerank_returned={}, topk-3={}, total_cost={:.1f}ms",
-                        query[:50], len(results), filtered_count, len(final_results), final_count, total_cost)
+            logger.info("向量检索完成: query={}, recall={}, soft_over_threshold={}, rerank_returned={}, topk-3={}, total_cost={:.1f}ms",
+                        query[:50], len(results), soft_filtered_count, len(final_results), final_count, total_cost)
             return final_results
 
         except Exception as e:

@@ -105,4 +105,4 @@ fastapi:
   knowledge-delete-path: /api/rag/document/delete
   knowledge-search-path: /api/rag/search/query
   connect-timeout: 10
-  read-timeout: 60
+  read-timeout: 120

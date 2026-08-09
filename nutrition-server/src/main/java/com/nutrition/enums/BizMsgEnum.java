@@ -88,6 +88,16 @@ public enum BizMsgEnum {
     AI_ESTIMATE_NO_CONFIG(500, "未找到启用的AI配置，请先在管理后台启用"),
     AI_ESTIMATE_NO_RESULT(500, "AI估算未返回有效结果"),
 
+    // ========== AI聊天会话模块 (CHAT) ==========
+    CHAT_USER_ID_EMPTY(400, "用户ID不能为空"),
+    CHAT_SESSION_ID_EMPTY(400, "会话ID不能为空"),
+    CHAT_MESSAGE_EMPTY(400, "消息内容不能为空"),
+    CHAT_ROLE_INVALID(400, "非法消息角色"),
+    CHAT_CREATE_FAILED(500, "创建AI聊天会话失败"),
+    CHAT_HISTORY_LOAD_FAILED(500, "查询AI聊天历史失败"),
+    CHAT_FLUSH_FAILED(500, "会话消息落盘失败"),
+    CHAT_SESSION_LIST_FAILED(500, "查询AI聊天会话列表失败"),
+
     // ========== 通用错误 ==========
     SYSTEM_ERROR(500, "系统繁忙，请稍后再试");
 

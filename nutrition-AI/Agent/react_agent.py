@@ -119,14 +119,24 @@ class ReActAgent:
     # ----- Prompt组装 -----
     def _build_system_prompt(self) -> str:
         """
-        组装系统提示词：角色设定 + 工具介绍
+        组装系统提示词：角色设定 + 工具介绍 + 工作规范
+
+        角色设定从 Redis（Java端 MySQL ai_config 表的 systemPrompt 字段）读取，
+        运营在 Java 管理后台修改提示词后即时生效，无需改代码。
+        Redis 未命中时使用默认角色设定兜底。
 
         工具介绍通过 build_tools_prompt() 动态生成，
         大模型根据工具简介自主判断调用时机，后端不硬编码意图判断。
         """
+        # 角色设定：优先从 Redis 读取，读不到用默认值
+        from services.redis_service import get_redis_service
+        role_prompt = get_redis_service().get_system_prompt()
+        if not role_prompt:
+            role_prompt = "你是专业的营养健康助手，擅长为用户提供饮食、热量、营养方面的专业建议。"
+
         tools_intro = build_tools_prompt()
         return (
-            "你是专业的营养健康助手，擅长为用户提供饮食、热量、营养方面的专业建议。\n"
+            f"{role_prompt}\n"
             "你可以使用以下工具来辅助回答：\n"
             f"{tools_intro}\n\n"
             "工作规范：\n"

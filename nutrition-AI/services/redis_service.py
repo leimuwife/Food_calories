@@ -35,6 +35,24 @@ class RedisService:
         logger.info("Redis服务初始化完成: host={}, port={}, db={}",
                     settings.redis_host, settings.redis_port, settings.redis_db)
 
+    def get_system_prompt(self) -> Optional[str]:
+        """
+        读取AI对话角色系统提示词（由Java端 AiConfigCacheRunner 预热写入）
+
+        从 ai:config:enabled 配置中取 systemPrompt 字段，
+        供 ReAct Agent 的角色设定使用，实现运营在 Java 管理后台修改提示词后即时生效。
+
+        Returns:
+            系统提示词文本；未命中或为空返回None
+        """
+        config = self.get_ai_config()
+        if not config:
+            return None
+        prompt = config.get("systemPrompt") or config.get("system_prompt")
+        if prompt and isinstance(prompt, str) and prompt.strip():
+            return prompt.strip()
+        return None
+
     # ==================== 辅助方法 ====================
 
     @staticmethod
@@ -97,6 +115,32 @@ class RedisService:
         return None
 
     # ==================== 核心业务方法 ====================
+
+    def get_system_prompt(self) -> Optional[str]:
+        """
+        读取当前启用的AI角色设定系统提示词（由Java端预热写入Redis）
+
+        从 ai:config:enabled 配置中提取 systemPrompt 字段，
+        供 ReAct Agent 作为角色设定使用，避免代码硬编码。
+
+        Returns:
+            系统提示词文本；未命中或为空返回None，调用方用默认值兜底
+        """
+        try:
+            config = self.get_ai_config()
+            if not config:
+                return None
+
+            prompt = config.get("systemPrompt") or config.get("system_prompt")
+            if prompt and isinstance(prompt, str) and prompt.strip():
+                logger.info("Redis系统提示词命中: length={}", len(prompt))
+                return prompt.strip()
+
+            logger.info("Redis AI配置中 systemPrompt 为空，将使用默认角色设定")
+            return None
+        except Exception as e:
+            logger.warning("读取系统提示词异常（使用默认值兜底）: error={}", str(e))
+            return None
 
     def get_food_nutrition(self, food_name: str) -> Optional[Dict[str, Any]]:
         """

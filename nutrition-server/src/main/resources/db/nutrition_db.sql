@@ -172,20 +172,52 @@ CREATE TABLE `food_nutrition` (
 
 
 
--- nutrition_db.nutritionist_chat 定义
+-- nutrition_db.rag_knowledge_document 定义
 
-CREATE TABLE `nutritionist_chat` (
-  `id` bigint NOT NULL COMMENT '雪花主键ID',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `role` varchar(20) NOT NULL COMMENT '角色 user用户 / assistantAI',
-  `content` text NOT NULL COMMENT '对话文本',
-  `file_ids` varchar(2000) DEFAULT NULL COMMENT '图片附件ID JSON数组',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',
+CREATE TABLE `rag_knowledge_document` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID，业务唯一文档ID',
+  `doc_name` varchar(255) NOT NULL COMMENT '上传文档名称',
+  `file_md5` varchar(64) NOT NULL COMMENT '文件整体MD5，用于查重，和Python侧md5校验一致',
+  `upload_user_id` bigint NOT NULL COMMENT '上传管理员ID，关联系统用户表',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+  `status` tinyint DEFAULT '1' COMMENT '状态：1正常 2向量入库中 3入库失败 4已删除',
+  `remark` varchar(500) DEFAULT '' COMMENT '备注说明',
+  `vector_store_id` varchar(128) DEFAULT '' COMMENT '阿里云向量库该文档分组ID，删除时用',
+  `delete_flag` tinyint(1) DEFAULT '0' COMMENT '是否删除: 0-未删除, 1-已删除',
+  `file_ids` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '附件表主键ID数组JSON字符串，存储本次上传所有图片附件id',
   PRIMARY KEY (`id`),
-  KEY `idx_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='营养师AI对话记录';
+  UNIQUE KEY `uk_file_md5_del` (`file_md5`,`delete_flag`),
+  KEY `idx_upload_user` (`upload_user_id`),
+  KEY `idx_delete_flag` (`delete_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='RAG知识库-上传文档主表';
+
+
+-- nutrition_db.chat_message 定义
+
+CREATE TABLE `chat_message` (
+  `id` bigint NOT NULL COMMENT '雪花主键ID',
+  `session_id` varchar(64) NOT NULL COMMENT '关联会话唯一id',
+  `role` varchar(32) NOT NULL COMMENT '消息类型：user用户提问、ai_thought AI思考、tool_call工具入参、tool_result工具返回、ai_answer AI最终回答',
+  `content` text NOT NULL COMMENT '消息正文',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '消息更新时间',
+  `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',
+  KEY `idx_session_id` (`session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天会话消息记录表';
+
+
+
+-- nutrition_db.chat_session 定义
+
+CREATE TABLE `chat_session` (
+  `session_id` bigint NOT NULL COMMENT '雪花算法生成会话主键ID',
+  `user_id` bigint NOT NULL COMMENT '登录用户id',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '会话创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '会话更新时间',
+  `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',
+  PRIMARY KEY (`session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI聊天会话主表';
 
 
 

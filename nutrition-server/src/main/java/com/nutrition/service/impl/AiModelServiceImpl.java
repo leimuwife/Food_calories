@@ -1,40 +1,38 @@
 package com.nutrition.service.impl;
 
 import com.nutrition.client.FastApiClient;
+import com.nutrition.dto.AiChatResultDTO;
 import com.nutrition.service.AiModelService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * AI模型调用服务实现类（Mock版本）
- * 原真实LLM调用逻辑已迁移至独立Python-FastAPI项目
- * 当前返回预设兜底回答文案，后续接入FastAPI后替换为真实调用
+ * AI模型调用服务实现类
+ * 真实对话与推理逻辑由独立Python-FastAPI服务的ReActAgent引擎提供，
+ * 本类仅通过 {@link FastApiClient} 转发用户提问、会话与用户标识，并返回对话结果。
  *
- * @see FastApiClient 后续通过此客户端调用Python-FastAPI AI服务
+ * <p>会话标识流转：首次对话 sessionId 传 null，Python 回调 Java 雪花算法
+ * 生成正式会话ID并随结果回传；Controller 将其返回前端，后续多轮对话原样携带。
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AiModelServiceImpl implements AiModelService {
 
-    private static final String FALLBACK_RESPONSE = "感谢您的提问！我是食光笔记AI营养助手，当前AI服务正在升级中，"
-            + "后续将为您提供更专业的营养分析与饮食建议。\n\n"
-            + "⚠️ 答案由AI生成，仅供参考，不构成医疗建议";
-
-    private static final String TEST_RESPONSE = "连通性测试成功！AI服务Mock模式运行正常。";
+    private final FastApiClient fastApiClient;
 
     @Override
-    public String chat(String userMessage) {
-        log.info("AI对话(Mock): message={}", userMessage);
-
-        // TODO: 后续接入Python-FastAPI AI服务后，调用FastApiClient.chat()替换Mock实现
-        return FALLBACK_RESPONSE;
+    public AiChatResultDTO chat(String userMessage, String sessionId, Long userId) {
+        log.info("AI对话请求转发Python: sessionId={}, userId={}, message={}",
+                sessionId, userId, userMessage);
+        return fastApiClient.chat(userMessage, sessionId, userId);
     }
 
     @Override
-    public String test(String testMessage) {
-        log.info("AI配置测试(Mock): message={}", testMessage);
-
-        // TODO: 后续接入Python-FastAPI AI服务后，调用FastApiClient.chat()替换Mock实现
-        return TEST_RESPONSE;
+    public AiChatResultDTO test(String testMessage, Long userId) {
+        log.info("AI配置连通性测试转发Python: userId={}, message={}", userId, testMessage);
+        // 复用完整对话链路：新建会话走通即证明Python服务、会话回调、模型配置全部可用
+        return fastApiClient.chat(testMessage, null, userId);
     }
 }

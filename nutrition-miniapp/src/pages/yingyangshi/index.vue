@@ -119,6 +119,8 @@ const inputContent = ref('')
 const selectedImages = ref<{ fileId: string; url: string }[]>([])
 const isLoading = ref(false)
 const scrollToId = ref('')
+// 当前会话ID：首次对话为空，后端新建会话后回传并保存；重新进入页面为空即开启新对话
+const currentSessionId = ref('')
 
 interface SelectedImage {
   fileId: string
@@ -242,8 +244,15 @@ async function sendMessage() {
   try {
     const res = await nutritionistChat({
       content: content,
-      fileIds: fileIds.length > 0 ? fileIds : undefined
+      fileIds: fileIds.length > 0 ? fileIds : undefined,
+      // 携带当前会话ID保持多轮上下文；为空时后端新建会话
+      sessionId: currentSessionId.value || undefined
     })
+
+    // 首次对话后端生成会话ID并回传，保存后后续消息携带，实现多轮记忆
+    if (res.data.sessionId) {
+      currentSessionId.value = res.data.sessionId
+    }
 
     const aiMsg: ChatMessage = {
         id: Date.now() + 1,

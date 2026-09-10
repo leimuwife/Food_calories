@@ -180,9 +180,16 @@ export interface ChatMessage {
 export interface NutritionistChatParam {
   content: string
   fileIds?: string[]
+  /** 会话ID；不传表示新建对话，后端生成后在响应sessionId中回传 */
+  sessionId?: string
 }
 
-export interface NutritionistChatResult extends ChatMessage {}
+/** 营养师对话响应：AI回答文本 + 会话标识（首次对话为新生成的会话ID） */
+export interface NutritionistChatResult {
+  response: string
+  sessionId?: string
+  newSession?: boolean
+}
 
 export interface UserFeedback {
   id: number

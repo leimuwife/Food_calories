@@ -88,6 +88,10 @@ public enum BizMsgEnum {
     AI_ESTIMATE_NO_CONFIG(500, "未找到启用的AI配置，请先在管理后台启用"),
     AI_ESTIMATE_NO_RESULT(500, "AI估算未返回有效结果"),
 
+    // ========== AI营养师对话模块 (AICHAT) ==========
+    AI_CHAT_FAILED(500, "AI对话服务调用失败，请稍后重试"),
+    AI_CHAT_NO_RESULT(500, "AI对话未返回有效回答"),
+
     // ========== AI聊天会话模块 (CHAT) ==========
     CHAT_USER_ID_EMPTY(400, "用户ID不能为空"),
     CHAT_SESSION_ID_EMPTY(400, "会话ID不能为空"),

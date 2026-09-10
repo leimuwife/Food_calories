@@ -9,6 +9,8 @@ interface RequestOptions {
   params?: AnyObject
   header?: Record<string, string>
   showLoading?: boolean
+  /** 请求超时时间（毫秒），默认15000；AI对话等长耗时接口可单独调大 */
+  timeout?: number
 }
 
 export interface ApiResponse<T = unknown> {
@@ -18,7 +20,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 export default function request<T = unknown>(options: RequestOptions): Promise<ApiResponse<T>> {
-  const { url, method = 'GET', data, params, header = {}, showLoading = true } = options
+  const { url, method = 'GET', data, params, header = {}, showLoading = true, timeout = 15000 } = options
 
   if (showLoading) {
     uni.showLoading({ title: '加载中...', mask: true })
@@ -48,7 +50,7 @@ export default function request<T = unknown>(options: RequestOptions): Promise<A
       method,
       data: method === 'GET' ? undefined : data,
       header: headers,
-      timeout: 15000,
+      timeout,
       success: (res) => {
         const statusCode = res.statusCode
         const responseData = res.data as ApiResponse<T>

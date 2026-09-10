@@ -6,7 +6,8 @@
 1. 使用 | 管道符串联 Runnable 组件（RunnablePassthrough / RunnableParallel / RunnableLambda）
 2. Redis与RAG两个查询分支通过 RunnableParallel 并行执行，减少接口耗时
 3. Prompt 从外部 txt 文件加载（config/prompts/calorie_estimate.txt），业务话术改动无需改代码
-4. 单分支失败不阻断链路（仅舍弃失败分支数据），双分支同时失效抛出业务异常
+4. 单分支失败不阻断链路（含向量库初始化失败：RAG分支短路降级并懒重试，
+   Redis分支仍可独立提供数据），双分支同时失效抛出业务异常
 5. 完全复用 SearchService（检索规则、向量库单例、网络重试均保留）
 """
 import json
@@ -33,8 +34,17 @@ class CalorieEstimateService:
     """食材热量估算服务（LCEL链式）"""
 
     def __init__(self) -> None:
-        # 完全复用既有服务单例（遵循全局单例复用连接硬约束）
-        self.search_service = get_search_service()
+        # 向量检索服务初始化失败时降级为None：不阻断本服务实例创建，
+        # RAG分支在每次执行时短路并懒重试（见_get_search_service），
+        # 向量库恢复后无需重启服务即可自愈；Redis分支不受影响可独立出数据
+        try:
+            self.search_service = get_search_service()
+        except Exception as e:
+            logger.warning("向量检索服务初始化失败，RAG分支降级（仅用Redis数据），后续调用自动重试: {}",
+                           str(e))
+            self.search_service = None
+
+        # Redis服务与向量库无关，正常初始化
         self.redis_service = get_redis_service()
 
         # 读取外置Prompt文件（禁止代码硬编码提示词）
@@ -115,17 +125,41 @@ class CalorieEstimateService:
             logger.warning("热量估算-Redis分支异常（舍弃该分支）: food_name={}, error={}", food_name, str(e))
             return {"ok": False, "data": None, "hit": False, "error": str(e)}
 
+    def _get_search_service(self):
+        """
+        获取向量检索服务（懒重试）
+
+        初始化阶段向量库不可用时 search_service 为 None；
+        每次RAG分支执行时尝试重新初始化，向量库恢复后无需重启服务即可自愈，
+        仍然失败则返回 None，由 _query_rag 短路降级。
+        """
+        if self.search_service is None:
+            try:
+                self.search_service = get_search_service()
+                logger.info("向量检索服务懒加载成功，RAG分支已恢复")
+            except Exception as e:
+                logger.warning("向量检索服务仍不可用（RAG分支舍弃）: {}", str(e))
+                return None
+        return self.search_service
+
     def _query_rag(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         """
         ②B 分支B：RAG知识库检索
         检索关键词为food_name，检索规则完全沿用SearchService（topk约束、阈值、重排截取、网络重试）。
-        异常单独捕获记录日志，不阻断链路。
+        向量库初始化失败或检索异常均单独捕获记录日志，不阻断链路（Redis分支仍可独立支撑）。
         """
         food_name = ctx["food_name"]
+
+        # 向量库不可用时短路返回失败分支，不进入检索调用
+        search_service = self._get_search_service()
+        if search_service is None:
+            return {"ok": False, "results": [], "recall": 0,
+                    "error": "向量检索服务不可用，RAG分支已降级"}
+
         try:
             start = time.time()
             # 沿用原有检索配置：topk传入合法区间最小值，SearchService内部完成重排截取topk-3
-            results = self.search_service.search(food_name, topk=VectorConstants.RETRIEVE_MIN_TOPK)
+            results = search_service.search(food_name, topk=VectorConstants.RETRIEVE_MIN_TOPK)
             cost = (time.time() - start) * 1000
             logger.info("热量估算-RAG分支: food_name={}, recall={}, cost={:.1f}ms",
                         food_name, len(results), cost)

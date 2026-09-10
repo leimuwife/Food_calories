@@ -2,6 +2,7 @@ package com.nutrition.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nutrition.dto.AiChatResultDTO;
 import com.nutrition.enums.BizMsgEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -307,13 +308,82 @@ public class FastApiClient {
         }
     }
 
-    // ==================== 预留方法 ====================
+    // ==================== AI营养师对话 ====================
 
     /**
-     * 调用Python对话接口（预留）
+     * 调用Python营养师同步对话接口
+     *
+     * <p>Python内部复用ReActAgent流式引擎（思考-工具调用-观察循环），
+     * 收集最终回答文本后一次性返回。会话标识规则：
+     * <ul>
+     *   <li>传入sessionId：继续已有对话，走Redis/MySQL多轮上下文</li>
+     *   <li>sessionId为空：Python回调Java雪花算法新建正式会话，生成的ID随结果回传</li>
+     * </ul>
+     *
+     * @param message   用户提问内容（必填）
+     * @param sessionId 会话ID，可为null；为空时Python回调Java雪花算法新建正式会话
+     * @param userId    用户ID，新建会话（sessionId为空）时必传
+     * @return 对话结果（AI回答文本 + 会话ID + 是否新建）
      */
-    public String chat(String message) {
-        log.debug("FastApiClient.chat 预留方法，当前未执行真实调用");
-        return null;
+    @Retryable(
+            value = {RestClientException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2)
+    )
+    public AiChatResultDTO chat(String message, String sessionId, Long userId) {
+        Assert.hasText(message, BizMsgEnum.CHAT_MESSAGE_EMPTY.getMessage());
+
+        String url = buildUrl(properties.getChatPath());
+        log.info("调用Python营养师对话接口: sessionId={}, userId={}, message={}, url={}",
+                sessionId, userId, message, url);
+
+        try {
+            HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> body = new HashMap<>(4);
+            body.put("message", message);
+            body.put("session_id", sessionId != null ? sessionId : "");
+            body.put("user_id", userId != null ? String.valueOf(userId) : "");
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            PythonApiResponseVO<Map<String, Object>> result = parseResponse(
+                    response.getBody(), new TypeReference<>() {});
+
+            if (result.isSuccess()) {
+                Map<String, Object> data = result.getData();
+                Object answer = data != null ? data.get("response") : null;
+                if (answer == null || answer.toString().trim().isEmpty()) {
+                    log.warn("Python对话无有效回答: sessionId={}", sessionId);
+                    throw new FastApiBusinessException(BizMsgEnum.AI_CHAT_NO_RESULT.getMessage());
+                }
+                Object returnedSessionId = data != null ? data.get("session_id") : null;
+                Object isNewSession = data != null ? data.get("is_new_session") : null;
+
+                AiChatResultDTO dto = AiChatResultDTO.builder()
+                        .response(answer.toString())
+                        .sessionId(returnedSessionId != null ? returnedSessionId.toString() : null)
+                        .newSession(Boolean.TRUE.equals(isNewSession))
+                        .build();
+                log.info("Python营养师对话成功: sessionId={}, newSession={}, answerLen={}",
+                        dto.getSessionId(), dto.getNewSession(), dto.getResponse().length());
+                return dto;
+            } else {
+                log.warn("Python对话业务失败: sessionId={}, code={}, msg={}",
+                        sessionId, result.getCode(), result.getMsg());
+                throw new FastApiBusinessException(
+                        BizMsgEnum.AI_CHAT_FAILED.getMessage() + ": " + result.getMsg());
+            }
+        } catch (RestClientException e) {
+            log.warn("Python对话网络异常(将重试): message={}, error={}", message, e.getMessage());
+            throw e;
+        } catch (FastApiBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Python对话未知异常: message={}, error={}", message, e.getMessage(), e);
+            throw new FastApiBusinessException(
+                    BizMsgEnum.AI_CHAT_FAILED.getMessage() + ": " + e.getMessage(), e);
+        }
     }
 }

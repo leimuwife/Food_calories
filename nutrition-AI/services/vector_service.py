@@ -63,7 +63,9 @@ class VectorService:
         self.client.create(
             name=settings.vector_collection_name,
             dimension=VectorConstants.VECTOR_DIMENSION,
-            metric="cosine"
+            metric="cosine",
+            fields_schema=VectorConstants.FIELDS_SCHEMA,
+            timeout=VectorConstants.CREATE_TIMEOUT
         )
         created = self.client.get(name=settings.vector_collection_name)
         if getattr(created, "code", 0) not in (0, None, ""):

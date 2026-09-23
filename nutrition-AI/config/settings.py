@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # ==================== 阿里云 DashVector 向量数据库配置 ====================
     vector_endpoint: str = ""
     vector_api_key: str = ""
-    vector_collection_name: str = "food_knowledge_base"
+    vector_collection_name: str = "food_nutrition_knowledge"
 
     # ==================== 阿里云 DashScope Embedding 配置 ====================
     dashscope_api_key: str = ""

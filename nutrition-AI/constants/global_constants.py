@@ -104,6 +104,20 @@ class VectorConstants:
     # 当前项目使用的向量维度（必须与DashVector集合维度、Embedding输出维度一致）
     VECTOR_DIMENSION = 1024
 
+    # 创建集合时声明的字段Schema（DashVector规定：集合创建后Schema不可更改）
+    # 只有在此声明的字段才能用于 filter 过滤查询（doc_id / file_md5 为过滤字段）
+    # 注意：chunk_index 必须是 str —— services/vector_service.py 写入的是 str(chunk_index)
+    FIELDS_SCHEMA = {
+        "text": str,
+        "doc_id": str,
+        "file_md5": str,
+        "chunk_index": str,
+        "filename": str,
+    }
+
+    # 创建集合后等待 ready 的超时时间（秒），避免 create 后立刻 get 拿到未就绪的假失败
+    CREATE_TIMEOUT = 60
+
     # 文档内容前缀（标识知识库文档，帮助Embedding模型区分文档类型）
     DOCUMENT_PREFIX = "document: "
 

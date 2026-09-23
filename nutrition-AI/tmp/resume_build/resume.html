@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>吴聪聪-后端开发-优化版</title>
+  <style>
+    @page { size: A4; margin: 8mm 10mm 8mm 10mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      color: #222;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      font-size: 8.65pt;
+      line-height: 1.48;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    a { color: inherit; text-decoration: none; }
+    .resume { width: 190mm; }
+    .hero {
+      display: grid;
+      grid-template-columns: 27mm 1fr;
+      gap: 5mm;
+      align-items: center;
+      padding-bottom: 3.1mm;
+      border-bottom: 1.2px solid #8ab3de;
+      margin-bottom: 2.9mm;
+    }
+    .photo {
+      width: 27mm;
+      height: 35mm;
+      object-fit: cover;
+      border-radius: 1.4mm;
+      border: 0.5mm solid #fff;
+      box-shadow: 0 0 0 0.25mm #c8d9ec;
+    }
+    .hero-main { padding-top: 0.3mm; }
+    .name-row { display: flex; align-items: baseline; gap: 5mm; }
+    .name {
+      font-size: 23pt;
+      line-height: 1.08;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #151515;
+    }
+    .target {
+      color: #2265ad;
+      font-size: 13pt;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+    .contact {
+      margin-top: 3.2mm;
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 5mm;
+      row-gap: 1.4mm;
+      color: #333;
+      font-size: 8.55pt;
+    }
+    .contact span { white-space: nowrap; }
+    .contact .icon { color: #2f70c9; font-weight: 700; margin-right: 0.9mm; }
+    .section { margin-top: 2.65mm; }
+    .section-title {
+      position: relative;
+      height: 6.7mm;
+      line-height: 6.7mm;
+      padding-left: 4.5mm;
+      margin-bottom: 1.45mm;
+      background: #eef5fc;
+      color: #2369b1;
+      font-size: 11.3pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .section-title::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1.6mm;
+      height: 100%;
+      background: #367fcb;
+    }
+    .item-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 4mm;
+      font-weight: 700;
+      color: #111;
+      line-height: 1.35;
+    }
+    .item-head .role { font-weight: 700; }
+    .item-head .date { white-space: nowrap; font-weight: 500; }
+    .item-sub {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 4mm;
+      color: #343434;
+      margin-top: 0.15mm;
+    }
+    .item-sub .link { white-space: nowrap; color: #2265ad; }
+    .line { margin: 0.55mm 0 0; }
+    .line b { color: #111; }
+    .summary-line { margin: 0.5mm 0 0; }
+    .skills { margin-top: 0.2mm; }
+    .skill-row {
+      display: grid;
+      grid-template-columns: 24mm 1fr;
+      gap: 2.4mm;
+      margin-top: 0.58mm;
+    }
+    .skill-label { font-weight: 700; color: #1f5fa4; }
+    ul {
+      margin: 0.72mm 0 0 0;
+      padding-left: 4.2mm;
+      list-style: none;
+    }
+    li {
+      position: relative;
+      margin: 0 0 0.77mm 0;
+      padding-left: 0.1mm;
+      text-align: justify;
+    }
+    li::before {
+      content: "";
+      position: absolute;
+      left: -3.1mm;
+      top: 1.75mm;
+      width: 1.15mm;
+      height: 1.15mm;
+      border-radius: 50%;
+      background: #3d83cd;
+    }
+    .tight li { margin-bottom: 0.65mm; }
+    .project + .project { margin-top: 2.35mm; }
+    .project-intro { color: #3a3a3a; margin-top: 0.52mm; }
+    .education {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 3mm;
+      align-items: baseline;
+    }
+    .honor { margin-top: 0.7mm; color: #303030; }
+    .note { color: #555; }
+    .divider { height: 0.25mm; background: #dce9f6; margin-top: 1.1mm; }
+    .keep { break-inside: avoid; page-break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <main class="resume">
+    <header class="hero">
+      <img class="photo" src="photo.png" alt="证件照">
+      <div class="hero-main">
+        <div class="name-row">
+          <div class="name">吴聪聪</div>
+          <div class="target">后端开发</div>
+        </div>
+        <div class="contact">
+          <span><span class="icon">●</span>2005.01</span>
+          <span><span class="icon">☎</span>18309287179</span>
+          <span><span class="icon">✉</span>wccleimu@outlook.com</span>
+          <span><span class="icon">⌘</span><a href="https://github.com/leimuwife">github.com/leimuwife</a></span>
+        </div>
+      </div>
+    </header>
+
+    <section class="section keep">
+      <div class="section-title">教育经历</div>
+      <div class="item-head">
+        <div>西安科技大学　<span class="role">软件工程 · 本科</span></div>
+        <div class="date">2023.09 - 2027.06（预计）</div>
+      </div>
+      <div class="line"><b>核心课程：</b>Java程序设计、数据结构、操作系统、计算机网络</div>
+      <div class="honor"><b>在校荣誉：</b>2025全国大学生数学建模竞赛省二等奖；2025全国大学生计算机能力挑战赛省二等奖</div>
+    </section>
+
+    <section class="section keep">
+      <div class="section-title">专业技能</div>
+      <div class="skills">
+        <div class="skill-row">
+          <div class="skill-label">后端开发</div>
+          <div>熟悉Java、Spring Boot、MyBatis-Plus、MySQL、Redis，掌握事务、索引、缓存及分布式锁等常用机制；了解JVM内存结构与垃圾回收机制。</div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label">微服务与工程</div>
+          <div>了解Spring Cloud、Nacos、OpenFeign、Gateway、Sentinel、Redisson，具备服务注册发现、远程调用、限流熔断及多环境配置实践；熟悉Git协作流程。</div>
+        </div>
+        <div class="skill-row">
+          <div class="skill-label">大模型应用</div>
+          <div>了解Python、FastAPI、LangChain、RAG、Function Calling、ReAct、SSE及Prompt工程，具备知识库Agent与大模型服务接入实践；了解RabbitMQ、达梦数据库。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section keep">
+      <div class="section-title">实习经历</div>
+      <div class="item-head">
+        <div>云锦汇科技有限公司　<span class="role">后端开发实习生</span></div>
+        <div class="date">2026.02 - 2026.06</div>
+      </div>
+      <div class="item-sub">
+        <div><b>项目：</b>地方国资局政务管理系统</div>
+        <div class="note">微服务架构 · 政企业务</div>
+      </div>
+      <ul class="tight">
+        <li><b>核心接口开发：</b>负责企业任务上报、国资局任务审核等核心模块的部分后端接口设计与编码；基于Nacos完成服务注册与多环境配置，通过OpenFeign实现服务间远程调用，保障业务流程稳定流转。</li>
+        <li><b>并发控制：</b>针对微服务多实例部署下多人同时审核任务产生的并发冲突问题，基于Redis分布式锁隔离审核操作，并保证事务提交完成后释放锁，使同一任务同一时间仅允许一人处理，规避重复审核和数据错乱。</li>
+        <li><b>联调与稳定性：</b>参与需求评审、接口联调、缺陷修复和功能测试，协助定位核心业务流程中的异常问题，持续改善系统稳定性。</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <div class="section-title">项目经历</div>
+
+      <article class="project keep">
+        <div class="item-head">
+          <div>营养管理系统　<span class="role">后端 / 大模型应用开发</span></div>
+          <div class="date">2026.06 - 至今</div>
+        </div>
+        <div class="item-sub">
+          <div class="project-intro"><b>项目简介：</b>面向健康管理人群的智能营养助手，支持微信小程序、H5双端，提供AI热量估算、饮食记录、营养咨询和社区互动等功能。</div>
+          <div class="link"><a href="https://github.com/leimuwife/Food_calories">GitHub / Food_calories</a></div>
+        </div>
+        <ul class="tight">
+          <li><b>RAG与热量估算：</b>将AI能力拆分为独立Python FastAPI服务，基于LangChain和DashVector构建食物领域知识库，融合关键词匹配与向量检索进行多路召回；结合Redis缓存与召回结果调用大模型完成热量估算，在项目内同等输入的评测场景下使估算准确率提升23%。</li>
+          <li><b>ReAct Agent与记忆：</b>基于ReAct Agent实现多轮营养咨询，通过SSE流式返回对话结果；采用Redis保存短期会话记忆、MySQL与向量数据库持久化长期记忆，提问时检索历史片段补充模型上下文。</li>
+          <li><b>定时报告与持久化：</b>基于Spring @Scheduled批量拉取用户饮食及健康档案，调用Python AI服务生成个性化营养诊断和饮食推荐；报告写入MySQL并使用Redis缓存热点数据，支持历史报告查询。</li>
+        </ul>
+      </article>
+
+      <article class="project keep">
+        <div class="item-head">
+          <div>小说屋　<span class="role">后端开发</span></div>
+          <div class="date">2025.07 - 2025.11</div>
+        </div>
+        <div class="project-intro"><b>项目简介：</b>面向C端用户的小说在线阅读平台，支持书籍浏览、评论发布、作家注册和小说发布；采用Spring Cloud + Nacos微服务架构，按业务域拆分服务。</div>
+        <ul class="tight">
+          <li><b>评论幂等与并发治理：</b>针对评论“先查后插”存在的TOCTOU并发漏洞，设计自定义@Lock注解并结合AOP切面，通过SpEL动态生成“用户 + 小说”粒度锁键；基于Redisson tryLock和看门狗续期机制处理锁自动续期，解决高并发下的重复评论及数据库唯一约束报错问题。</li>
+          <li><b>网关与容错：</b>基于Spring Cloud Gateway实现路由转发与统一跨域处理；针对书籍服务流量压力接入Sentinel进行流量防护，按接口类型配置熔断降级规则并托管至Nacos，实现基础的故障隔离与业务降级能力。</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
+

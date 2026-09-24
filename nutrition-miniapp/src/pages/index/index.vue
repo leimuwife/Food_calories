@@ -86,6 +86,13 @@
                 <path d="M18 20 L32 8 L46 20" fill="#fff"/>
                 <circle cx="32" cy="8" r="4" fill="#FF69B4"/>
               </template>
+              <template v-else-if="item.key === 'healthAnalysis'">
+                <rect x="12" y="44" width="8" height="14" rx="3" fill="#FFB6C1"/>
+                <rect x="25" y="32" width="8" height="26" rx="3" fill="#FF69B4"/>
+                <rect x="38" y="22" width="8" height="36" rx="3" fill="#FF8DC2"/>
+                <rect x="51" y="38" width="8" height="20" rx="3" fill="#FFB6C1"/>
+                <path d="M13 24 Q28 10 44 17 Q54 20 60 12" stroke="#FF69B4" stroke-width="3" fill="none" stroke-linecap="round"/>
+              </template>
             </svg>
           </view>
           <text class="entry-name">{{ item.name }}</text>
@@ -211,6 +218,7 @@ const quickItems = [
   { key: 'dinner', name: '晚餐' },
   { key: 'snack', name: '夜宵' },
   { key: 'nutritionist', name: '小张营养师' },
+  { key: 'healthAnalysis', name: '健康分析' },
 ]
 
 const tabItems = [
@@ -289,6 +297,8 @@ function handleQuickTap(key: string) {
     uni.navigateTo({ url: '/pages/add/snack/index' })
   } else if (key === 'nutritionist') {
     uni.navigateTo({ url: '/pages/yingyangshi/index' })
+  } else if (key === 'healthAnalysis') {
+    uni.navigateTo({ url: '/pages/statistics/health-analysis/index' })
   }
 }
 
@@ -303,7 +313,7 @@ function handleTabTap(key: string) {
 
 onMounted(() => {
   if (!userStore.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/weChatLogin/index' })
+    uni.navigateTo({ url: '/pages/auth/login/index' })
     return
   }
   loadTodayData()
@@ -416,13 +426,12 @@ onMounted(() => {
 }
 
 .quick-entry {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16rpx;
 }
 
 .entry-item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

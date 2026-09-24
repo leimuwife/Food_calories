@@ -5,6 +5,7 @@
       <image class="avatar" :src="getAvatarUrl(userStore.userInfo?.fileIds)" mode="aspectFill" />
       <view class="profile-info">
         <text class="profile-name">{{ userStore.userInfo?.nickname || '未登录' }}</text>
+        <text v-if="userStore.userInfo?.username" class="profile-username">@{{ userStore.userInfo.username }}</text>
       </view>
       <u-icon name="arrow-right" size="16" color="#C0C4CC" />
     </view>
@@ -14,14 +15,13 @@
       <u-button
         type="primary"
         :custom-style="{ backgroundColor: '#7EC8A0', borderColor: '#7EC8A0', borderRadius: '40rpx' }"
-        text="微信一键登录"
-        open-type="getPhoneNumber"
-        @tap="handleWxLogin"
+        text="立即登录"
+        @tap="goToLogin"
       />
       <u-button
         :custom-style="{ marginTop: '16rpx', borderRadius: '40rpx' }"
-        text="账号密码登录"
-        @tap="showLoginDialog = true"
+        text="注册账号"
+        @tap="goToRegister"
       />
     </view>
 
@@ -45,39 +45,6 @@
         <u-icon name="arrow-right" size="14" color="#C0C4CC" />
       </view>
     </view>
-
-    <!-- 登录弹窗 -->
-    <u-popup :show="showLoginDialog" mode="center" :round="20" @close="showLoginDialog = false">
-      <view class="login-dialog">
-        <text class="login-title">账号登录</text>
-        <u-input v-model="loginForm.username" placeholder="用户名" :custom-style="{ marginBottom: '16rpx' }" />
-        <u-input v-model="loginForm.password" type="password" placeholder="密码" :custom-style="{ marginBottom: '24rpx' }" />
-        <u-button
-          type="primary"
-          :custom-style="{ backgroundColor: '#7EC8A0', borderColor: '#7EC8A0', borderRadius: '40rpx' }"
-          text="登录"
-          @tap="handleLogin"
-        />
-        <text class="register-link" @tap="showRegisterDialog = true; showLoginDialog = false">没有账号？去注册</text>
-      </view>
-    </u-popup>
-
-    <!-- 注册弹窗 -->
-    <u-popup :show="showRegisterDialog" mode="center" :round="20" @close="showRegisterDialog = false">
-      <view class="login-dialog">
-        <text class="login-title">账号注册</text>
-        <u-input v-model="registerForm.username" placeholder="用户名" :custom-style="{ marginBottom: '16rpx' }" />
-        <u-input v-model="registerForm.nickname" placeholder="昵称" :custom-style="{ marginBottom: '16rpx' }" />
-        <u-input v-model="registerForm.password" type="password" placeholder="密码" :custom-style="{ marginBottom: '24rpx' }" />
-        <u-button
-          type="primary"
-          :custom-style="{ backgroundColor: '#7EC8A0', borderColor: '#7EC8A0', borderRadius: '40rpx' }"
-          text="注册"
-          @tap="handleRegister"
-        />
-        <text class="register-link" @tap="showLoginDialog = true; showRegisterDialog = false">已有账号？去登录</text>
-      </view>
-    </u-popup>
 
     <!-- 目标编辑弹窗 -->
     <u-popup :show="showGoalDialog" mode="center" :round="20" @close="showGoalDialog = false">
@@ -114,11 +81,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { accountLogin, register, exportData } from '@/api'
+import { exportData } from '@/api'
 import { updateNutritionGoal } from '@/api/wode/wode'
-import type { RegisterParam, NutritionGoalUpdateParam } from '@/api/types'
 import { getToday, formatDate } from '@/utils'
 
 const userStore = useUserStore()
@@ -142,14 +108,6 @@ function getAvatarUrl(fileIds: string | null | undefined): string {
   return firstId ? `/api/attachment/${firstId}/url` : '/static/images/default-avatar.png'
 }
 
-// 登录
-const showLoginDialog = ref(false)
-const loginForm = reactive({ username: '', password: '' })
-
-// 注册
-const showRegisterDialog = ref(false)
-const registerForm = reactive<RegisterParam>({ username: '', nickname: '', password: '' })
-
 // 目标编辑
 const showGoalDialog = ref(false)
 const goalFieldLabel = ref('')
@@ -160,34 +118,12 @@ const goalValue = ref('')
 const showDisclaimer = ref(false)
 const showAbout = ref(false)
 
-async function handleWxLogin() {
-  uni.navigateTo({ url: '/pages/weChatLogin/index' })
+function goToLogin() {
+  uni.navigateTo({ url: '/pages/auth/login/index' })
 }
 
-async function handleLogin() {
-  if (!loginForm.username || !loginForm.password) {
-    uni.showToast({ title: '请输入用户名和密码', icon: 'none' })
-    return
-  }
-  try {
-    const res = await accountLogin(loginForm.username, loginForm.password)
-    userStore.setLogin(res.data.token, res.data.user)
-    uni.showToast({ title: '登录成功', icon: 'success' })
-    showLoginDialog.value = false
-  } catch (e) { /* handled in api */ }
-}
-
-async function handleRegister() {
-  if (!registerForm.username || !registerForm.password) {
-    uni.showToast({ title: '请填写完整信息', icon: 'none' })
-    return
-  }
-  try {
-    const res = await register(registerForm)
-    userStore.setLogin(res.data.token, res.data.user)
-    uni.showToast({ title: '注册成功', icon: 'success' })
-    showRegisterDialog.value = false
-  } catch (e) { /* handled in api */ }
+function goToRegister() {
+  uni.navigateTo({ url: '/pages/auth/register/index' })
 }
 
 function editGoal(field: string, label: string, currentValue: number) {
@@ -241,6 +177,7 @@ function handleLogout() {
 .avatar { width: 100rpx; height: 100rpx; border-radius: 50%; border: 3rpx solid #FFFFFF; }
 .profile-info { flex: 1; }
 .profile-name { font-size: 34rpx; font-weight: 600; color: #FFFFFF; display: block; }
+.profile-username { font-size: 22rpx; color: rgba(255,255,255,0.78); display: block; margin-top: 6rpx; }
 .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 8rpx; }
 .goal-item { background: #F5F7FA; border-radius: 16rpx; padding: 24rpx; text-align: center; }
 .goal-value { font-size: 40rpx; font-weight: 700; color: #7EC8A0; display: block; }

@@ -1,9 +1,4 @@
 import { useUserStore } from '@/stores/user'
-import type {
-  LoginResultVO,
-  UserVO,
-  RegisterParam,
-} from './types'
 import request from './request'
 
 const BASE_URL = 'http://localhost:8088'
@@ -44,30 +39,6 @@ export interface ApiResponse<T = unknown> {
   code: number
   message: string
   data: T
-}
-
-export function wxLogin(code: string) {
-  return request<LoginResultVO>({
-    url: '/api/auth/wx-login',
-    method: 'POST',
-    data: { code },
-  })
-}
-
-export function accountLogin(username: string, password: string) {
-  return request<LoginResultVO>({
-    url: '/api/auth/login',
-    method: 'POST',
-    data: { username, password },
-  })
-}
-
-export function register(data: RegisterParam) {
-  return request<LoginResultVO>({
-    url: '/api/auth/register',
-    method: 'POST',
-    data,
-  })
 }
 
 export function getRecordsByRange(startDate: string, endDate: string) {
@@ -174,9 +145,6 @@ export function getAttachmentUrl(fileId: string) {
 }
 
 export default {
-  wxLogin,
-  accountLogin,
-  register,
   updateProfile,
   updateNutritionGoal,
   getFeedbackList,

@@ -18,6 +18,7 @@
         </view>
         <view class="user-info">
           <text class="user-nickname">{{ userInfo.nickname }}</text>
+          <text class="user-username">@{{ userInfo.username }}</text>
         </view>
       </view>
 
@@ -127,11 +128,13 @@ const userInfo = computed(() => {
   const user = userStore.userInfo
   if (!user) {
     return {
+      username: '未登录',
       nickname: generateDefaultNickname(),
       fileIds: null
     }
   }
   return {
+    username: user.username || user.nickname || '未设置',
     nickname: user.nickname || generateDefaultNickname(),
     fileIds: user.fileIds || null
   }
@@ -301,6 +304,13 @@ $card-bg: #FFFFFF;
   font-size: 40rpx;
   font-weight: 600;
   color: #333;
+}
+
+.user-username {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #A58A95;
 }
 
 .menu-card {

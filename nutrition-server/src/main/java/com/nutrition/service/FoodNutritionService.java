@@ -1,6 +1,9 @@
 package com.nutrition.service;
 
 import com.nutrition.dto.NutritionDTO;
+import com.nutrition.vo.FoodCategoryVO;
+import com.nutrition.vo.FoodSearchResultVO;
+import com.nutrition.vo.FoodVO;
 
 import java.util.List;
 import java.util.Map;
@@ -37,4 +40,30 @@ public interface FoodNutritionService {
      * @param nutritionDTO 营养数据DTO
      */
     void syncToCache(String foodName, NutritionDTO nutritionDTO);
+
+    /**
+     * 按关键词和分类分页查询食物。
+     *
+     * @param keyword  食物名称关键词
+     * @param category 食物分类
+     * @param page     页码
+     * @param pageSize 每页条数
+     * @return 食物分页结果
+     */
+    FoodSearchResultVO searchFood(String keyword, String category, int page, int pageSize);
+
+    /**
+     * 根据食物ID查询详情。
+     *
+     * @param id 食物ID
+     * @return 食物营养详情
+     */
+    FoodVO getFoodDetail(Long id);
+
+    /**
+     * 查询全部食物分类。
+     *
+     * @return 去重后的分类列表
+     */
+    List<FoodCategoryVO> listCategories();
 }

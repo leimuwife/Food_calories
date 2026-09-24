@@ -1,5 +1,5 @@
 import request from '../request'
-import type { DietRecordParam } from '../types'
+import type { DietRecordParam, FoodCategoryVO, FoodSearchResult, FoodVO } from '../types'
 import { useUserStore } from '@/stores/user'
 
 const BASE_URL = 'http://localhost:8088'
@@ -54,6 +54,39 @@ export function estimateCalories(foodName: string, foodDesc: string, weight?: nu
     url: '/api/ai/estimate-calorie',
     method: 'GET',
     params: { foodName, foodDesc, weight },
+  })
+}
+
+/** 分页搜索食物 */
+export function searchFood(keyword = '', category?: string, page = 1, pageSize = 20) {
+  return request<FoodSearchResult>({
+    url: '/api/food/search',
+    method: 'GET',
+    params: {
+      keyword,
+      ...(category ? { category } : {}),
+      page,
+      pageSize,
+    },
+    showLoading: false,
+  })
+}
+
+/** 查询食物详情 */
+export function getFoodDetail(id: string | number) {
+  return request<FoodVO>({
+    url: `/api/food/${id}`,
+    method: 'GET',
+    showLoading: false,
+  })
+}
+
+/** 查询食物分类 */
+export function getFoodCategories() {
+  return request<FoodCategoryVO[]>({
+    url: '/api/food/categories',
+    method: 'GET',
+    showLoading: false,
   })
 }
 

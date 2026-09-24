@@ -139,6 +139,14 @@ async def chat(req: ChatRequest) -> ApiResponse:
             logger.warning("营养师对话失败: session_id={}, error={}", session_id, msg)
             return error_response(msg, ErrorCode.INTERNAL_ERROR)
 
+        # 每轮回答完成后立即落盘，确保历史列表与历史消息可立即从 MySQL 查询。
+        # 落盘失败不阻断本次回答，保留 Redis 缓存等待 TTL 扫描重试。
+        try:
+            get_session_service().flush_session_to_mysql(session_id)
+        except SessionServiceException as e:
+            logger.error("营养师对话完成但会话落盘失败: session_id={}, error={}",
+                         session_id, str(e))
+
         logger.info("营养师同步对话成功: session_id={}, isNew={}, answer_len={}",
                     session_id, is_new_session, len(answer))
         return success_response(
@@ -148,3 +156,51 @@ async def chat(req: ChatRequest) -> ApiResponse:
     except Exception as e:
         logger.exception("营养师同步对话异常: session_id={}, error={}", session_id, str(e))
         return error_response(f"对话失败: {str(e)}", ErrorCode.INTERNAL_ERROR)
+
+
+# ==================== 健康分析报告 ====================
+
+class HealthReportRequest(BaseModel):
+    """健康分析报告请求参数（无会话的一次性 AI 调用）。"""
+    prompt: str = Field(..., description="Java端构造的完整健康分析提示词", min_length=1)
+    user_id: str = Field("", description="当前用户ID，用于日志追踪")
+
+
+def _extract_llm_text(content) -> str:
+    """提取 LangChain 模型返回的文本内容。"""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text")
+                if text:
+                    parts.append(str(text))
+            elif item:
+                parts.append(str(item))
+        return "".join(parts).strip()
+    return str(content or "").strip()
+
+
+@router.post("/health-report", dependencies=[Depends(verify_api_key)])
+async def health_report(req: HealthReportRequest) -> ApiResponse:
+    """
+    健康分析报告接口。
+
+    该接口不创建聊天会话，直接根据 Java 端构造的提示词调用模型，
+    返回一次性健康分析报告文本。
+    """
+    from models.llm_model import get_llm_model
+
+    logger.info("健康分析报告请求: user_id={}, prompt_length={}", req.user_id, len(req.prompt))
+    try:
+        response = await get_llm_model().ainvoke(req.prompt)
+        report = _extract_llm_text(getattr(response, "content", ""))
+        if not report:
+            return error_response("AI未返回有效健康分析报告", ErrorCode.INTERNAL_ERROR)
+        logger.info("健康分析报告生成成功: user_id={}, report_length={}", req.user_id, len(report))
+        return success_response({"report": report}, "分析成功")
+    except Exception as e:
+        logger.exception("健康分析报告生成失败: user_id={}, error={}", req.user_id, str(e))
+        return error_response(f"健康分析报告生成失败: {str(e)}", ErrorCode.INTERNAL_ERROR)

@@ -48,8 +48,13 @@ public enum BizMsgEnum {
     // ========== 用户模块 (USER) ==========
     USER_LOGIN_FAILED(400, "用户名或密码错误"),
     USER_NAME_EXIST(400, "用户名已存在"),
+    USER_NAME_LENGTH_INVALID(400, "用户名长度为3-32位"),
     USER_NOT_EXIST(404, "用户不存在"),
     USER_NOT_LOGIN(401, "请先登录"),
+    PASSWORD_NOT_MATCH(400, "两次输入的密码不一致"),
+    CAPTCHA_EMPTY(400, "验证码不能为空"),
+    CAPTCHA_EXPIRED_OR_INVALID(400, "验证码错误或已过期"),
+    CAPTCHA_GENERATE_FAILED(500, "验证码生成失败，请稍后重试"),
 
     // ========== 打卡模块 (CHECKIN) ==========
     CHECKIN_RECORD_NOT_EXIST(404, "打卡记录不存在"),
@@ -59,6 +64,8 @@ public enum BizMsgEnum {
     ADMIN_NOT_EXIST(400, "账号不存在"),
     ADMIN_DISABLED(400, "账号已被禁用，请联系超级管理员"),
     ADMIN_PASSWORD_ERROR(400, "密码错误"),
+    ADMIN_PERMISSION_DENIED(403, "无管理员权限"),
+    ADMIN_USER_STATUS_UPDATE_FAILED(500, "用户状态更新失败"),
 
     // ========== RAG知识库模块 (RAG) ==========
     RAG_FILE_EMPTY(400, "上传文件内容为空"),
@@ -101,6 +108,19 @@ public enum BizMsgEnum {
     CHAT_HISTORY_LOAD_FAILED(500, "查询AI聊天历史失败"),
     CHAT_FLUSH_FAILED(500, "会话消息落盘失败"),
     CHAT_SESSION_LIST_FAILED(500, "查询AI聊天会话列表失败"),
+    CHAT_SESSION_NOT_FOUND(404, "会话不存在"),
+    CHAT_NO_PERMISSION_VIEW(403, "无权查看该会话"),
+
+    // ========== 食物字典模块 (FOOD) ==========
+    FOOD_NOT_FOUND(404, "食物不存在"),
+    FOOD_ID_INVALID(400, "食物ID无效"),
+
+    // ========== 健康分析模块 (HEALTH) ==========
+    HEALTH_GOAL_INVALID(400, "健康分析目标类型无效"),
+    HEALTH_DATA_QUERY_FAILED(500, "健康数据查询失败，请稍后重试"),
+    HEALTH_REPORT_EMPTY(500, "AI分析未返回有效报告"),
+    HEALTH_REPORT_SAVE_FAILED(500, "健康分析报告保存失败"),
+    HEALTH_AI_UNAVAILABLE(503, "AI分析服务暂不可用，请稍后再试"),
 
     // ========== 通用错误 ==========
     SYSTEM_ERROR(500, "系统繁忙，请稍后再试");

@@ -1,12 +1,70 @@
 <template>
   <view class="page-container">
     <view class="header-area">
-      <view class="avatar-section">
-        <image src="/static/AI/nutritionist.png" class="nutritionist-avatar" mode="aspectFill"/>
-        <text class="nutritionist-name">小张营养师</text>
-        <text class="nutritionist-desc">专业营养咨询，为您的健康保驾护航</text>
+      <view class="header-nav">
+        <view class="nav-icon-btn" @tap="openHistoryDrawer">
+          <svg viewBox="0 0 48 48" class="nav-icon">
+            <path d="M12 15 L36 15 M12 24 L36 24 M12 33 L36 33" stroke="#FF69B4" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </view>
+        <view class="header-title-wrap">
+          <image src="/static/AI/nutritionist.png" class="header-avatar" mode="aspectFill"/>
+          <view>
+            <text class="nutritionist-name">小张营养师</text>
+            <text class="nutritionist-desc">专业营养咨询</text>
+          </view>
+        </view>
+        <view class="nav-icon-btn" @tap="startNewChat">
+          <svg viewBox="0 0 48 48" class="nav-icon">
+            <path d="M24 12 L24 36 M12 24 L36 24" stroke="#FF69B4" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </view>
       </view>
-      <view class="divider"></view>
+    </view>
+
+    <view v-if="showHistoryDrawer" class="drawer-mask" @tap="closeHistoryDrawer">
+      <view class="history-drawer" @tap.stop>
+        <view class="drawer-header">
+          <view>
+            <text class="drawer-title">历史对话</text>
+            <text class="drawer-subtitle">继续之前的营养咨询</text>
+          </view>
+          <view class="drawer-close" @tap="closeHistoryDrawer">
+            <svg viewBox="0 0 48 48" class="drawer-close-icon">
+              <path d="M17 17 L31 31 M31 17 L17 31" stroke="#B895A3" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </view>
+        </view>
+
+        <scroll-view scroll-y class="history-scroll">
+          <view v-if="isHistoryLoading" class="history-status">加载中...</view>
+          <view v-else-if="chatSessions.length === 0" class="history-status">暂无历史对话</view>
+          <template v-else>
+            <view
+              v-for="session in chatSessions"
+              :key="session.sessionId"
+              :class="['history-item', { active: currentSessionId === String(session.sessionId) }]"
+              @tap="selectSession(session)"
+            >
+              <view class="history-icon">
+                <svg viewBox="0 0 48 48" class="history-icon-svg">
+                  <path d="M12 13 Q12 9 16 9 L32 9 Q36 9 36 13 L36 29 Q36 33 32 33 L22 33 L15 39 L15 33 Q12 33 12 29 Z" fill="#FFB6C1"/>
+                  <path d="M18 18 L30 18 M18 24 L27 24" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </view>
+              <view class="history-info">
+                <text class="history-title">{{ session.lastMessage || '新对话' }}</text>
+                <text class="history-time">{{ formatSessionTime(session.updateTime || session.createTime) }}</text>
+              </view>
+            </view>
+          </template>
+        </scroll-view>
+
+        <view class="new-chat-footer" @tap="startNewChat">
+          <text class="new-chat-plus">＋</text>
+          <text class="new-chat-text">新建对话</text>
+        </view>
+      </view>
     </view>
 
     <scroll-view 
@@ -109,9 +167,9 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { nutritionistChat } from '@/api/yingyangshi/yingyangshi'
+import { getChatHistory, getChatSessions, nutritionistChat } from '@/api/yingyangshi/yingyangshi'
 import { uploadAttachment, getAttachmentUrl } from '@/api'
-import type { ChatMessage } from '@/api/types'
+import type { ChatMessage, ChatSessionVO } from '@/api/types'
 
 const userStore = useUserStore()
 const chatMessages = ref<ChatMessage[]>([])
@@ -121,6 +179,9 @@ const isLoading = ref(false)
 const scrollToId = ref('')
 // 当前会话ID：首次对话为空，后端新建会话后回传并保存；重新进入页面为空即开启新对话
 const currentSessionId = ref('')
+const chatSessions = ref<ChatSessionVO[]>([])
+const showHistoryDrawer = ref(false)
+const isHistoryLoading = ref(false)
 
 interface SelectedImage {
   fileId: string
@@ -155,6 +216,89 @@ function getDefaultAvatar(): string {
 }
 
 function onInput() {}
+
+function openHistoryDrawer() {
+  showHistoryDrawer.value = true
+  loadSessionList()
+}
+
+function closeHistoryDrawer() {
+  showHistoryDrawer.value = false
+}
+
+function createWelcomeMessage(): ChatMessage {
+  return {
+    id: Date.now(),
+    role: 'assistant',
+    content: '您好！我是小张营养师，很高兴为您服务～\n\n您可以向我咨询：\n🍎 饮食搭配建议\n🏃 减肥计划\n🥗 营养餐单\n💡 健康小贴士\n\n也可以上传食物图片让我帮您分析热量哦！',
+    createTime: new Date().toISOString()
+  }
+}
+
+function startNewChat() {
+  currentSessionId.value = ''
+  chatMessages.value = [createWelcomeMessage()]
+  inputContent.value = ''
+  selectedImages.value = []
+  closeHistoryDrawer()
+  scrollToBottom()
+}
+
+async function loadSessionList() {
+  if (!userStore.isLoggedIn) return
+  isHistoryLoading.value = true
+  try {
+    const response = await getChatSessions()
+    chatSessions.value = response.data || []
+  } catch (error) {
+    console.error('加载历史会话失败:', error)
+  } finally {
+    isHistoryLoading.value = false
+  }
+}
+
+async function selectSession(session: ChatSessionVO) {
+  const sessionId = String(session.sessionId)
+  if (currentSessionId.value === sessionId && chatMessages.value.length > 1) {
+    closeHistoryDrawer()
+    return
+  }
+
+  isHistoryLoading.value = true
+  try {
+    const response = await getChatHistory(sessionId)
+    currentSessionId.value = sessionId
+    chatMessages.value = (response.data || []).map((message, index) => ({
+      id: Date.now() + index,
+      role: message.role === 'user' ? 'user' : 'assistant',
+      content: message.content,
+      createTime: message.createTime,
+    }))
+    if (chatMessages.value.length === 0) {
+      chatMessages.value = [createWelcomeMessage()]
+    }
+    closeHistoryDrawer()
+    await scrollToBottom()
+  } catch (error) {
+    uni.showToast({ title: '历史消息加载失败', icon: 'none' })
+  } finally {
+    isHistoryLoading.value = false
+  }
+}
+
+function formatSessionTime(value: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const now = new Date()
+  const isToday = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate()
+  if (isToday) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+  return `${date.getMonth() + 1}-${date.getDate()}`
+}
 
 function previewImage(images: string[], index: number) {
   uni.previewImage({
@@ -262,6 +406,7 @@ async function sendMessage() {
       }
 
     chatMessages.value.push(aiMsg)
+    await loadSessionList()
   } catch (e) {
     console.error('聊天请求失败:', e)
 
@@ -287,14 +432,9 @@ async function scrollToBottom() {
   }
 }
 
-onMounted(() => {
-  const welcomeMsg: ChatMessage = {
-    id: 1,
-    role: 'assistant',
-    content: '您好！我是小张营养师，很高兴为您服务～\n\n您可以向我咨询：\n🍎 饮食搭配建议\n🏃 减肥计划\n🥗 营养餐单\n💡 健康小贴士\n\n也可以上传食物图片让我帮您分析热量哦！',
-    createTime: new Date().toISOString()
-  }
-  chatMessages.value.push(welcomeMsg)
+onMounted(async () => {
+  startNewChat()
+  await loadSessionList()
 })
 </script>
 
@@ -330,40 +470,212 @@ $card-bg: #FFFFFF;
 
 .header-area {
   background: $card-bg;
-  padding: 60rpx 32rpx 24rpx;
+  padding: 68rpx 28rpx 22rpx;
   box-shadow: 0 8rpx 24rpx rgba(255, 182, 193, 0.08);
 }
 
-.avatar-section {
+.header-nav {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: space-between;
 }
 
-.nutritionist-avatar {
-  width: 180rpx;
-  height: 180rpx;
+.nav-icon-btn {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  background: #FFF3F7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-icon {
+  width: 42rpx;
+  height: 42rpx;
+}
+
+.header-title-wrap {
+  flex: 1;
+  margin: 0 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-avatar {
+  width: 70rpx;
+  height: 70rpx;
   border-radius: 50%;
-  border: 6rpx solid $primary-color;
-  margin-bottom: 16rpx;
+  border: 3rpx solid $primary-color;
+  margin-right: 14rpx;
 }
 
 .nutritionist-name {
-  font-size: 40rpx;
+  display: block;
+  font-size: 32rpx;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8rpx;
 }
 
 .nutritionist-desc {
-  font-size: 26rpx;
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
   color: #999;
 }
 
-.divider {
-  height: 1rpx;
-  background: rgba(255, 182, 193, 0.3);
-  margin-top: 24rpx;
+.drawer-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  background: rgba(61, 41, 50, 0.34);
+  display: flex;
+}
+
+.history-drawer {
+  width: 76%;
+  height: 100vh;
+  background: #FFFBFD;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 16rpx 0 40rpx rgba(61, 41, 50, 0.14);
+  animation: drawer-in 0.22s ease-out;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.drawer-header {
+  padding: 72rpx 28rpx 24rpx;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1rpx solid rgba(255, 182, 193, 0.26);
+}
+
+.drawer-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #3D2932;
+}
+
+.drawer-subtitle {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #A58A95;
+}
+
+.drawer-close {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #FFF0F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-close-icon {
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.history-scroll {
+  flex: 1;
+  padding: 20rpx 18rpx;
+}
+
+.history-status {
+  padding: 80rpx 0;
+  text-align: center;
+  font-size: 25rpx;
+  color: #B895A3;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 18rpx;
+  margin-bottom: 12rpx;
+  border-radius: 24rpx;
+  background: transparent;
+}
+
+.history-item.active {
+  background: #FFF0F5;
+}
+
+.history-icon {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 18rpx;
+  background: #FFF4F8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.history-icon-svg {
+  width: 42rpx;
+  height: 42rpx;
+}
+
+.history-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 16rpx;
+}
+
+.history-title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 27rpx;
+  color: #553A46;
+}
+
+.history-time {
+  display: block;
+  margin-top: 7rpx;
+  font-size: 21rpx;
+  color: #B895A3;
+}
+
+.new-chat-footer {
+  margin: 18rpx 24rpx 34rpx;
+  height: 88rpx;
+  border-radius: 26rpx;
+  background: linear-gradient(135deg, $primary-color 0%, #FF8DC2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12rpx 24rpx rgba(255, 105, 180, 0.2);
+}
+
+.new-chat-plus {
+  color: #FFFFFF;
+  font-size: 38rpx;
+  margin-right: 8rpx;
+}
+
+.new-chat-text {
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 700;
 }
 
 .chat-scroll {

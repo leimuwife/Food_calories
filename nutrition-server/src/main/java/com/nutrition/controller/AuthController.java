@@ -4,10 +4,11 @@ import com.nutrition.common.Result;
 import com.nutrition.config.JwtAuthFilter;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.RegisterParam;
-import com.nutrition.param.WxLoginParam;
+import com.nutrition.service.CaptchaService;
 import com.nutrition.service.UserService;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.LoginResultVO;
+import com.nutrition.vo.CaptchaVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 用户认证控制器
- * 处理登录、注册、微信登录、登出等认证相关请求
+ * 处理普通账号登录、注册、图形验证码和登出等认证相关请求
  */
 @RestController
 @RequestMapping("/auth")
@@ -29,6 +30,17 @@ public class AuthController {
     private final UserService userService;
     private final JwtAuthFilter jwtAuthFilter;
     private final RedisCache redisCache;
+    private final CaptchaService captchaService;
+
+    /**
+     * 获取注册用图形验证码。
+     *
+     * @return 验证码标识和 Base64 图片
+     */
+    @GetMapping("/captcha")
+    public Result<CaptchaVO> captcha() {
+        return Result.ok(captchaService.createCaptcha());
+    }
 
     /**
      * 用户登录
@@ -41,20 +53,14 @@ public class AuthController {
 
     /**
      * 用户注册
+     *
+     * @param param 注册参数
+     * @return 注册结果，不返回登录令牌
      */
     @PostMapping("/register")
-    public Result<LoginResultVO> register(@Valid @RequestBody RegisterParam param) {
-        LoginResultVO result = userService.register(param);
-        return Result.ok("注册成功", result);
-    }
-
-    /**
-     * 微信登录
-     */
-    @PostMapping("/wx-login")
-    public Result<LoginResultVO> wxLogin(@Valid @RequestBody WxLoginParam param) {
-        LoginResultVO result = userService.wxLogin(param.getCode());
-        return Result.ok("登录成功", result);
+    public Result<Void> register(@Valid @RequestBody RegisterParam param) {
+        userService.register(param);
+        return Result.ok("注册成功", null);
     }
 
     /**

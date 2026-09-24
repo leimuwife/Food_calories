@@ -223,6 +223,23 @@ CREATE TABLE `chat_session` (
 
 -- nutrition_db.sys_admin 定义
 
+-- nutrition_db.health_analysis_report 定义
+
+CREATE TABLE `health_analysis_report` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '报告主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `goal_type` varchar(32) NOT NULL COMMENT '目标类型编码',
+  `report_content` text NOT NULL COMMENT 'AI分析报告正文',
+  `calorie_snapshot` text NOT NULL COMMENT '生成报告时的热量数据快照JSON',
+  `last_7_avg` decimal(10,1) NOT NULL DEFAULT '0.0' COMMENT '最近7天日均热量',
+  `last_30_avg` decimal(10,1) NOT NULL DEFAULT '0.0' COMMENT '最近30天日均热量',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_goal_create_time` (`user_id`,`goal_type`,`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='健康分析报告表';
+
 CREATE TABLE `sys_admin` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '管理员主键ID',
   `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '登录账号，唯一',
@@ -271,7 +288,7 @@ CREATE TABLE `sys_user` (
   `password_hash` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'BCrypt密码哈希',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-  `delete_flag` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '逻辑删除是否删除',
+  `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',
   `file_ids` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '关联附件表中的id',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_openid` (`openid`),

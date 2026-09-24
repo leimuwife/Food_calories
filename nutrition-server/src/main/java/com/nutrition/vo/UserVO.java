@@ -12,6 +12,10 @@ public class UserVO {
 
     private String openid;
 
+    /** 登录用户名 */
+    private String username;
+
+    /** 用户昵称 */
     private String nickname;
 
     /** 头像附件ID */

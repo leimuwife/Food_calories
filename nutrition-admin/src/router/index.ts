@@ -21,6 +21,11 @@ const routes: RouteRecordRaw[] = [
     name: 'DashVector',
     component: () => import('../views/dashvector/index.vue'),
   },
+  {
+    path: '/users',
+    name: 'Users',
+    component: () => import('../views/users/index.vue'),
+  },
 ]
 
 const router = createRouter({

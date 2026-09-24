@@ -12,9 +12,12 @@ public interface UserService extends IService<SysUser> {
 
     LoginResultVO login(LoginParam param);
 
-    LoginResultVO register(RegisterParam param);
-
-    LoginResultVO wxLogin(String code);
+    /**
+     * 注册普通用户账号。
+     *
+     * @param param 注册参数，包含图形验证码和两次密码
+     */
+    void register(RegisterParam param);
 
     SysUser getCurrentUser(Long userId);
 

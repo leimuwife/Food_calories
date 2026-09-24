@@ -1,5 +1,7 @@
 package com.nutrition.config;
 
+import com.nutrition.enums.BizMsgEnum;
+import com.nutrition.enums.JwtRoleEnum;
 import com.nutrition.util.JwtUtil;
 import com.nutrition.util.RedisCache;
 import jakarta.servlet.*;
@@ -29,8 +31,9 @@ public class JwtAuthFilter implements Filter {
     private static final String[] WHITE_LIST = {
             "/api/auth/login",
             "/api/auth/register",
-            "/api/auth/wx-login",
+            "/api/auth/captcha",
             "/api/auth/logout",
+            "/api/food/",
             "/api/attachment/",
             "/api/admin/login",
             // Python AI服务回调接口，使用API密钥鉴权，无需JWT
@@ -101,9 +104,19 @@ public class JwtAuthFilter implements Filter {
             return;
         }
 
-        // 将 userId 存入请求属性，供 Controller 使用
+        // 将 userId 和角色存入请求属性，供 Controller 使用
         Long userId = jwtUtil.getUserIdFromToken(token);
+        String role = jwtUtil.getRoleFromToken(token);
         req.setAttribute("userId", userId);
+        req.setAttribute("role", role);
+
+        // 管理端接口仅允许 ADMIN 角色访问，防止普通用户读取用户敏感信息
+        if (path.startsWith("/api/admin/") && !JwtRoleEnum.ADMIN.getCode().equals(role)) {
+            resp.setStatus(403);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"code\":403,\"message\":\"" + BizMsgEnum.ADMIN_PERMISSION_DENIED.getMessage() + "\",\"data\":null}");
+            return;
+        }
 
         chain.doFilter(request, response);
     }

@@ -7,10 +7,17 @@
   },
   "pages": [
     {
-      "path": "pages/weChatLogin/index",
+      "path": "pages/auth/login/index",
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/auth/register/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "注册"
       }
     },
     {
@@ -149,6 +156,14 @@
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "小张营养师"
+      }
+    },
+    {
+      "path": "pages/statistics/health-analysis/index",
+      "style": {
+        "navigationBarTitleText": "健康分析",
+        "navigationBarBackgroundColor": "#FF69B4",
+        "navigationBarTextStyle": "white"
       }
     }
   ],

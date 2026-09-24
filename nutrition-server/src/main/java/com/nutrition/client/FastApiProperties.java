@@ -25,6 +25,9 @@ public class FastApiProperties {
     /** 对话接口路径 */
     private String chatPath = "/api/ai/chat";
 
+    /** 健康分析报告接口路径 */
+    private String healthReportPath = "/api/ai/health-report";
+
     /** 知识库文档上传接口路径（调用Python） */
     private String knowledgeUploadPath = "/api/rag/document/upload";
 

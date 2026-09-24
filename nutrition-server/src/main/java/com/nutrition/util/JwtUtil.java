@@ -1,5 +1,6 @@
 package com.nutrition.util;
 
+import com.nutrition.enums.JwtRoleEnum;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,11 +27,30 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-    /** 生成 JWT 令牌 */
+    /**
+     * 生成普通用户 JWT 令牌。
+     *
+     * @param userId   用户ID
+     * @param username 用户名
+     * @return JWT令牌
+     */
     public String generateToken(String userId, String username) {
+        return generateToken(userId, username, JwtRoleEnum.USER);
+    }
+
+    /**
+     * 生成带角色的 JWT 令牌。
+     *
+     * @param userId   用户ID
+     * @param username 用户名
+     * @param role     角色枚举
+     * @return JWT令牌
+     */
+    public String generateToken(String userId, String username, JwtRoleEnum role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("role", role.getCode());
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
@@ -42,6 +62,16 @@ public class JwtUtil {
                 .expiration(expiryDate)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    /**
+     * 从令牌中解析角色。
+     *
+     * @param token JWT令牌
+     * @return 角色编码；旧令牌未携带角色时返回 null
+     */
+    public String getRoleFromToken(String token) {
+        return parseToken(token).get("role", String.class);
     }
 
     /** 从令牌中解析用户 ID */

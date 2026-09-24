@@ -1,13 +1,17 @@
 package com.nutrition.controller;
 
 import com.nutrition.common.Result;
+import com.nutrition.param.AdminUserStatusParam;
 import com.nutrition.service.AdminService;
 import com.nutrition.vo.AdminLoginVO;
+import com.nutrition.vo.AdminUserVO;
+import com.nutrition.vo.PageVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,5 +54,34 @@ public class AdminController {
         AdminLoginVO result = adminService.login(username.trim(), password);
 
         return Result.ok("登录成功", result);
+    }
+
+    /**
+     * 分页查询所有注册用户。
+     *
+     * @param pageNum  页码
+     * @param pageSize 每页条数，默认10
+     * @return 用户分页结果
+     */
+    @GetMapping("/users")
+    @Operation(summary = "用户分页列表", description = "管理员分页查询全部注册用户")
+    public Result<PageVO<AdminUserVO>> listUsers(
+            @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") int pageSize) {
+        return Result.ok(adminService.listUsers(pageNum, pageSize));
+    }
+
+    /**
+     * 启用或禁用用户。
+     *
+     * @param userId 用户ID
+     * @param param  状态参数
+     * @return 更新后的用户信息
+     */
+    @PutMapping("/users/{userId}/status")
+    @Operation(summary = "启用或禁用用户", description = "禁用后 delete_flag=1，用户无法登录")
+    public Result<AdminUserVO> updateUserStatus(@PathVariable("userId") Long userId,
+                                                 @Valid @RequestBody AdminUserStatusParam param) {
+        return Result.ok(adminService.updateUserStatus(userId, param.getEnabled()));
     }
 }

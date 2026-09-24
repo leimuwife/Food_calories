@@ -386,4 +386,55 @@ public class FastApiClient {
                     BizMsgEnum.AI_CHAT_FAILED.getMessage() + ": " + e.getMessage(), e);
         }
     }
+    // ==================== 健康分析报告 ====================
+
+    /**
+     * 调用 Python 专用健康分析报告接口。
+     * 该接口不使用聊天会话，仅根据 Java 构造的提示词返回一次性报告。
+     *
+     * @param prompt 健康分析提示词
+     * @param userId 当前用户ID
+     * @return AI 健康分析报告文本
+     */
+    public String generateHealthReport(String prompt, Long userId) {
+        Assert.hasText(prompt, BizMsgEnum.HEALTH_REPORT_EMPTY.getMessage());
+
+        String url = buildUrl(properties.getHealthReportPath());
+        log.info("调用Python健康分析接口: userId={}, promptLength={}, url={}", userId, prompt.length(), url);
+
+        try {
+            HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> body = new HashMap<>(4);
+            body.put("prompt", prompt);
+            body.put("user_id", userId != null ? String.valueOf(userId) : "");
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            PythonApiResponseVO<Map<String, Object>> result = parseResponse(
+                    response.getBody(), new TypeReference<>() {});
+
+            if (result.isSuccess()) {
+                Map<String, Object> data = result.getData();
+                Object report = data != null ? data.get("report") : null;
+                if (report == null || report.toString().trim().isEmpty()) {
+                    throw new FastApiBusinessException(BizMsgEnum.HEALTH_REPORT_EMPTY.getMessage());
+                }
+                return report.toString().trim();
+            }
+            log.warn("Python健康分析业务失败: userId={}, code={}, msg={}", userId, result.getCode(), result.getMsg());
+            throw new FastApiBusinessException(
+                    BizMsgEnum.HEALTH_AI_UNAVAILABLE.getMessage() + ": " + result.getMsg());
+        } catch (RestClientException e) {
+            log.warn("Python健康分析网络异常: userId={}, error={}", userId, e.getMessage());
+            throw e;
+        } catch (FastApiBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Python健康分析未知异常: userId={}, error={}", userId, e.getMessage(), e);
+            throw new FastApiBusinessException(
+                    BizMsgEnum.HEALTH_AI_UNAVAILABLE.getMessage() + ": " + e.getMessage(), e);
+        }
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.nutrition.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.nutrition.common.BusinessException;
 import com.nutrition.dto.ChatMessageItemDTO;
 import com.nutrition.entity.AIChatMessage;
 import com.nutrition.entity.NutritionistChat;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * AI聊天会话服务实现
@@ -48,33 +50,31 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     @Override
     public List<ChatMessageVO> getRecentHistory(Long sessionId, int limit) {
-        if (sessionId == null) {
-            throw new IllegalArgumentException(BizMsgEnum.CHAT_SESSION_ID_EMPTY.getMessage());
-        }
-        if (limit <= 0) {
-            limit = 20;
-        }
+        return queryHistory(sessionId, limit, null);
+    }
 
-        // 查询最近limit条未逻辑删除的消息（按ID倒序取最近，再转正序返回）
-        List<AIChatMessage> messages = chatMessageMapper.selectList(
-                new LambdaQueryWrapper<AIChatMessage>()
-                        .eq(AIChatMessage::getSessionId, sessionId)
-                        .eq(AIChatMessage::getDeleteFlag, 0)
-                        .orderByDesc(AIChatMessage::getId)
-                        .last("LIMIT " + limit)
-        );
-        Collections.reverse(messages);
-
-        List<ChatMessageVO> voList = new ArrayList<>(messages.size());
-        for (AIChatMessage msg : messages) {
-            voList.add(ChatMessageVO.builder()
-                    .role(ChatRoleEnum.getRoleByCode(msg.getRole()))
-                    .content(msg.getContent())
-                    .createTime(msg.getCreateTime())
-                    .build());
+    /**
+     * 获取指定用户可展示的会话历史。
+     *
+     * @param sessionId 会话ID
+     * @param userId    当前登录用户ID
+     * @param limit     最多返回条数
+     * @return 用户可见的正序消息列表
+     */
+    @Override
+    public List<ChatMessageVO> getVisibleHistory(Long sessionId, Long userId, int limit) {
+        if (userId == null) {
+            throw new BusinessException(BizMsgEnum.USER_NOT_LOGIN);
         }
-        log.info("查询AI聊天历史: sessionId={}, limit={}, count={}", sessionId, limit, voList.size());
-        return voList;
+        NutritionistChat chat = chatSessionMapper.selectById(sessionId);
+        if (chat == null) {
+            throw new BusinessException(BizMsgEnum.CHAT_SESSION_NOT_FOUND);
+        }
+        if (!userId.equals(chat.getUserId())) {
+            throw new BusinessException(BizMsgEnum.CHAT_NO_PERMISSION_VIEW);
+        }
+        return queryHistory(sessionId, limit,
+                List.of(ChatRoleEnum.USER.getCode(), ChatRoleEnum.AI_ANSWER.getCode()));
     }
 
     @Override
@@ -83,11 +83,11 @@ public class ChatSessionServiceImpl implements ChatSessionService {
             throw new IllegalArgumentException(BizMsgEnum.CHAT_USER_ID_EMPTY.getMessage());
         }
 
-        // 查询该用户未被逻辑删除的会话（全局逻辑删除自动过滤delete_flag=0），按创建时间倒序
+        // 查询该用户未被逻辑删除的会话，按最后更新时间倒序
         List<NutritionistChat> sessions = chatSessionMapper.selectList(
                 new LambdaQueryWrapper<NutritionistChat>()
                         .eq(NutritionistChat::getUserId, userId)
-                        .orderByDesc(NutritionistChat::getSessionId)
+                        .orderByDesc(NutritionistChat::getUpdateTime)
         );
 
         List<ChatSessionVO> voList = new ArrayList<>(sessions.size());
@@ -103,6 +103,43 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                     .build());
         }
         log.info("查询AI聊天会话列表: userId={}, count={}", userId, voList.size());
+        return voList;
+    }
+
+    /**
+     * 按条件查询聊天历史并转换为视图对象。
+     *
+     * @param sessionId 会话ID
+     * @param limit     最多返回条数
+     * @param roleCodes 角色编码过滤条件；为空时查询全部角色
+     * @return 正序排列的历史消息
+     */
+    private List<ChatMessageVO> queryHistory(Long sessionId, int limit, List<Long> roleCodes) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException(BizMsgEnum.CHAT_SESSION_ID_EMPTY.getMessage());
+        }
+        int queryLimit = limit > 0 ? limit : 20;
+
+        LambdaQueryWrapper<AIChatMessage> query = new LambdaQueryWrapper<AIChatMessage>()
+                .eq(AIChatMessage::getSessionId, sessionId)
+                .eq(AIChatMessage::getDeleteFlag, 0);
+        if (roleCodes != null && !roleCodes.isEmpty()) {
+            query.in(AIChatMessage::getRole, roleCodes);
+        }
+        query.orderByDesc(AIChatMessage::getId).last("LIMIT " + queryLimit);
+
+        List<AIChatMessage> messages = chatMessageMapper.selectList(query);
+        Collections.reverse(messages);
+
+        List<ChatMessageVO> voList = new ArrayList<>(messages.size());
+        for (AIChatMessage msg : messages) {
+            voList.add(ChatMessageVO.builder()
+                    .role(ChatRoleEnum.getRoleByCode(msg.getRole()))
+                    .content(msg.getContent())
+                    .createTime(msg.getCreateTime())
+                    .build());
+        }
+        log.info("查询AI聊天历史: sessionId={}, limit={}, count={}", sessionId, queryLimit, voList.size());
         return voList;
     }
 
@@ -168,6 +205,10 @@ public class ChatSessionServiceImpl implements ChatSessionService {
             msg.setContent(item.getContent());
             chatMessageMapper.insert(msg);
         }
+
+        // 3. 更新会话时间，让最近使用的会话排在列表首位
+        chat.setUpdateTime(LocalDateTime.now());
+        chatSessionMapper.updateById(chat);
         log.info("会话消息批量落盘完成: sessionId={}, count={}", sessionId, messages.size());
     }
 }

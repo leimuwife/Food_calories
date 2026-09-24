@@ -1,5 +1,6 @@
 package com.nutrition.controller;
 
+import com.nutrition.common.BusinessException;
 import com.nutrition.common.Result;
 import com.nutrition.dto.ChatMessageFlushDTO;
 import com.nutrition.dto.ChatSessionCreateDTO;
@@ -10,6 +11,7 @@ import com.nutrition.vo.ChatSessionCreateVO;
 import com.nutrition.vo.ChatSessionVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -88,25 +90,62 @@ public class ChatSessionController {
     /**
      * 查询用户的历史会话列表（前端进入聊天页加载，类比豆包会话列表）
      *
-     * @param userId 用户ID
+     * @param request HTTP 请求，用户ID从 JWT 过滤器写入的请求属性中获取
      * @return 会话列表项（按时间倒序，附最近一条用户消息预览）
      */
     @GetMapping("/list")
-    @Operation(summary = "查询用户会话列表", description = "按userId查询未逻辑删除的会话列表，按创建时间倒序，附最近消息预览")
-    public Result<List<ChatSessionVO>> listSessions(@RequestParam("userId") Long userId) {
+    @Operation(summary = "查询当前用户会话列表", description = "从JWT获取用户身份，按更新时间倒序返回会话列表")
+    public Result<List<ChatSessionVO>> listSessions(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         log.info("查询AI聊天会话列表请求: userId={}", userId);
 
         if (userId == null) {
-            return Result.badRequest(BizMsgEnum.CHAT_USER_ID_EMPTY.getMessage());
+            return Result.unauthorized(BizMsgEnum.USER_NOT_LOGIN.getMessage());
         }
 
         try {
             List<ChatSessionVO> sessions = chatSessionService.listSessionsByUserId(userId);
             return Result.ok(sessions);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("{}: userId={}, error={}",
                     BizMsgEnum.CHAT_SESSION_LIST_FAILED.getMessage(), userId, e.getMessage(), e);
             return Result.fail(BizMsgEnum.CHAT_SESSION_LIST_FAILED.getMessage() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询当前用户指定会话的可展示历史消息。
+     * 仅返回用户提问和 AI 最终回答，并校验会话归属。
+     *
+     * @param sessionId 会话ID
+     * @param limit     最多返回条数，默认100
+     * @param request   HTTP 请求，用户ID从 JWT 过滤器写入的请求属性中获取
+     * @return 用户可见的历史消息
+     */
+    @GetMapping("/{sessionId}/messages")
+    @Operation(summary = "查询当前用户会话消息", description = "按当前JWT用户校验会话归属，只返回用户提问和AI最终回答")
+    public Result<List<ChatMessageVO>> getVisibleMessages(
+            @PathVariable("sessionId") Long sessionId,
+            @RequestParam(value = "limit", defaultValue = "100") int limit,
+            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("查询当前用户会话消息: userId={}, sessionId={}, limit={}", userId, sessionId, limit);
+
+        if (userId == null) {
+            return Result.unauthorized(BizMsgEnum.USER_NOT_LOGIN.getMessage());
+        }
+
+        try {
+            List<ChatMessageVO> history = chatSessionService.getVisibleHistory(sessionId, userId, limit);
+            return Result.ok(history);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("{}: userId={}, sessionId={}, error={}",
+                    BizMsgEnum.CHAT_HISTORY_LOAD_FAILED.getMessage(), userId, sessionId, e.getMessage(), e);
+            return Result.fail(BizMsgEnum.CHAT_HISTORY_LOAD_FAILED.getMessage() + ": " + e.getMessage());
         }
     }
 

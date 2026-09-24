@@ -37,6 +37,13 @@
             </el-icon>
             <span class="menu-text">个人中心</span>
           </div>
+          <!-- 用户管理 -->
+          <div class="menu-item" @click="router.push('/users')">
+            <el-icon color="#409EFF">
+              <UserFilled />
+            </el-icon>
+            <span class="menu-text">用户管理</span>
+          </div>
           <!-- AI 模型配置 -->
           <div class="menu-item" @click="router.push('/ai-config')">
             <el-icon color="#409EFF">
@@ -65,7 +72,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, User, Setting, Document } from '@element-plus/icons-vue'
+import { ArrowDown, User, UserFilled, Setting, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 

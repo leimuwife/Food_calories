@@ -30,6 +30,17 @@ public interface ChatSessionService {
     List<ChatMessageVO> getRecentHistory(Long sessionId, int limit);
 
     /**
+     * 获取指定用户可展示的历史消息。
+     * 仅返回用户提问和 AI 最终回答，并在服务层校验会话归属。
+     *
+     * @param sessionId 会话ID
+     * @param userId    当前登录用户ID
+     * @param limit     最多返回条数
+     * @return 正序排列的用户可见消息
+     */
+    List<ChatMessageVO> getVisibleHistory(Long sessionId, Long userId, int limit);
+
+    /**
      * 查询用户的历史会话列表（未逻辑删除，按创建时间倒序，附最近一条用户消息预览）
      * 供前端进入聊天页加载会话列表
      *

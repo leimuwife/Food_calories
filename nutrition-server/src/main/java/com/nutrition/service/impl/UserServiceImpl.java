@@ -14,9 +14,11 @@ import com.nutrition.entity.Attachment;
 import com.nutrition.entity.SysUser;
 import com.nutrition.mapper.SysUserMapper;
 import com.nutrition.service.AttachmentService;
+import com.nutrition.service.CaptchaService;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.UserFeedbackService;
 import com.nutrition.service.UserService;
+import com.nutrition.util.AesUtil;
 import com.nutrition.util.JwtUtil;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.LoginResultVO;
@@ -48,15 +50,25 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     private final ContentAuditService contentAuditService;
     private final UserFeedbackService userFeedbackService;
     private final AttachmentService attachmentService;
+    private final CaptchaService captchaService;
+    private final AesUtil aesUtil;
 
+    /**
+     * 使用用户名和密码登录。
+     *
+     * @param param 登录参数
+     * @return 登录令牌和用户信息
+     */
     @Override
     public LoginResultVO login(LoginParam param) {
+        String username = param.getUsername().trim();
         SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUsername, param.getUsername()));
+                .eq(SysUser::getUsername, username));
         if (user == null) {
             throw new BusinessException(BizMsgEnum.USER_LOGIN_FAILED);
         }
-        if (!passwordEncoder.matches(param.getPassword(), user.getPasswordHash())) {
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(param.getPassword(), user.getPasswordHash())) {
             throw new BusinessException(BizMsgEnum.USER_LOGIN_FAILED);
         }
 
@@ -71,82 +83,39 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         return result;
     }
 
+    /**
+     * 校验图形验证码并注册普通用户。
+     *
+     * @param param 注册参数
+     */
     @Override
     @Transactional
-    public LoginResultVO register(RegisterParam param) {
+    public void register(RegisterParam param) {
+        if (!param.getPassword().equals(param.getConfirmPassword())) {
+            throw new BusinessException(BizMsgEnum.PASSWORD_NOT_MATCH);
+        }
+        captchaService.validateCaptcha(param.getCaptchaId(), param.getCaptchaCode());
+
+        String username = param.getUsername().trim();
+        if (username.length() < 3 || username.length() > 32) {
+            throw new BusinessException(BizMsgEnum.USER_NAME_LENGTH_INVALID);
+        }
         long count = this.count(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUsername, param.getUsername()));
+                .eq(SysUser::getUsername, username));
         if (count > 0) {
             throw new BusinessException(BizMsgEnum.USER_NAME_EXIST);
         }
 
         SysUser user = new SysUser();
-        user.setUsername(param.getUsername());
-        user.setNickname(param.getNickname());
+        user.setUsername(username);
+        user.setNickname(StrUtil.blankToDefault(param.getNickname(), username));
         user.setPasswordHash(passwordEncoder.encode(param.getPassword()));
+        user.setPasswordEncrypted(aesUtil.encrypt(param.getPassword()));
+        // sys_user 表允许 delete_flag 为 NULL，必须显式写入正常状态，否则逻辑删除查询会过滤新用户
+        user.setDeleteFlag(0);
 
         this.save(user);
-
-        String token = jwtUtil.generateToken(String.valueOf(user.getId()), user.getUsername());
-        LoginResultVO result = new LoginResultVO();
-        result.setToken(token);
-        UserVO userVO = convertToVO(user);
-        result.setUser(userVO);
-
-        cacheUser(user.getId(), userVO);
-
-        return result;
-    }
-
-    @Override
-    public LoginResultVO wxLogin(String code) {
-        String mockOpenid = "wx_" + code;
-        SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getOpenid, mockOpenid));
-
-        if (user == null) {
-            user = createMockUser(code, mockOpenid);
-            this.save(user);
-        }
-
-        String token = jwtUtil.generateToken(String.valueOf(user.getId()),
-                StrUtil.blankToDefault(user.getUsername(), "wx_user"));
-        LoginResultVO result = new LoginResultVO();
-        result.setToken(token);
-        UserVO userVO = convertToVO(user);
-        result.setUser(userVO);
-
-        cacheUser(user.getId(), userVO);
-
-        return result;
-    }
-
-    private SysUser createMockUser(String code, String openid) {
-        SysUser user = new SysUser();
-        user.setOpenid(openid);
-
-        return switch (code) {
-            case "test_code_user1" -> {
-                user.setNickname("张三");
-                user.setUsername("zhangsan");
-                yield user;
-            }
-            case "test_code_user2" -> {
-                user.setNickname("李四");
-                user.setUsername("lisi");
-                yield user;
-            }
-            case "test_code_nutritionist" -> {
-                user.setNickname("小张营养师");
-                user.setUsername("nutritionist_zhang");
-                yield user;
-            }
-            default -> {
-                user.setNickname("微信用户");
-                user.setUsername("wx_user_" + System.currentTimeMillis());
-                yield user;
-            }
-        };
+        log.info("用户注册成功: userId={}, username={}", user.getId(), username);
     }
 
     @Override
@@ -234,6 +203,7 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         UserVO vo = new UserVO();
         vo.setId(user.getId());
         vo.setOpenid(user.getOpenid());
+        vo.setUsername(user.getUsername());
         vo.setNickname(user.getNickname());
         vo.setFileIds(user.getFileIds());
         vo.setAvatarUrl(resolveAvatarUrl(user.getFileIds()));

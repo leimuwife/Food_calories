@@ -45,10 +45,14 @@ class ReActAgent:
                         session_id, user_query[:50], len(history))
             yield self._sse("start", {"sessionId": session_id})
 
-            # 2. 组装初始消息（系统提示词 + 历史 + 当前问题）
+            # 2. 保存当前用户提问，确保会话落盘后同时包含用户和AI消息。
+            # 必须先读取 history，再追加当前提问，避免当前问题在模型上下文中重复出现。
+            self._safe_append(session_id, "user", user_query)
+
+            # 3. 组装初始消息（系统提示词 + 历史 + 当前问题）
             messages = self._build_initial_messages(history, user_query)
 
-            # 3. ReAct循环：思考-工具调用-观察，直到模型判定无需调用工具
+            # 4. ReAct循环：思考-工具调用-观察，直到模型判定无需调用工具
             iterations = 0
             while iterations < self.max_iterations:
                 iterations += 1

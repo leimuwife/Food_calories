@@ -137,6 +137,7 @@ function selectCategory(cat: string) {
 
 function onKeywordChange(val: string) {
   keyword.value = val
+  page.value = 1
   // 防抖搜索
   if ((window as any).__searchTimer) clearTimeout((window as any).__searchTimer)
   ;(window as any).__searchTimer = setTimeout(() => doSearch(), 300)
@@ -145,7 +146,7 @@ function onKeywordChange(val: string) {
 async function doSearch() {
   loading.value = true
   try {
-    const res = await searchFood(keyword.value.trim(), activeCategory.value || undefined)
+    const res = await searchFood(keyword.value.trim(), activeCategory.value || undefined, page.value)
     foodList.value = res.data.list || []
     totalCount.value = res.data.total || 0
   } catch (e) {
@@ -159,7 +160,7 @@ async function loadMore() {
   if (foodList.value.length >= totalCount.value) return
   page.value++
   try {
-    const res = await searchFood(keyword.value.trim(), activeCategory.value || undefined)
+    const res = await searchFood(keyword.value.trim(), activeCategory.value || undefined, page.value)
     const more = res.data.list || []
     foodList.value.push(...more)
   } catch (e) { /* ignore */ }

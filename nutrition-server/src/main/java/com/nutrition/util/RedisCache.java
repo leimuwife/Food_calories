@@ -1,13 +1,17 @@
 package com.nutrition.util;
 
 import com.nutrition.config.RedisConfig;
+import com.nutrition.enums.RedisScriptEnum;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +28,10 @@ public class RedisCache {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final RedisConfig.CacheConfigProperties cacheConfigProperties;
+
+    /** 原子获取并删除字符串缓存的 Lua 脚本 */
+    private final RedisScript<String> getAndDeleteScript = new DefaultRedisScript<>(
+            RedisScriptEnum.GET_AND_DELETE.getScript(), String.class);
 
     public static final String PREFIX_BLACKLIST = "blacklist:";
     public static final String PREFIX_USER = "user:";
@@ -298,12 +306,15 @@ public class RedisCache {
      * @param value   缓存值（字符串）
      * @param timeout 过期时间
      * @param unit    时间单位
+     * @return 是否写入成功
      */
-    public void setString(String key, String value, long timeout, TimeUnit unit) {
+    public boolean setString(String key, String value, long timeout, TimeUnit unit) {
         try {
             stringRedisTemplate.opsForValue().set(key, value, timeout, unit);
+            return true;
         } catch (Exception e) {
             log.warn("Redis设置字符串缓存失败: key={}, error={}", key, e.getMessage());
+            return false;
         }
     }
 
@@ -318,6 +329,22 @@ public class RedisCache {
             return stringRedisTemplate.opsForValue().get(key);
         } catch (Exception e) {
             log.warn("Redis获取字符串缓存失败: key={}, error={}", key, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 原子获取并删除字符串缓存。
+     * 适用于验证码等只能消费一次的短生命周期数据。
+     *
+     * @param key 缓存键
+     * @return 缓存值；不存在或 Redis 异常时返回 null
+     */
+    public String getAndDelete(String key) {
+        try {
+            return stringRedisTemplate.execute(getAndDeleteScript, Collections.singletonList(key));
+        } catch (Exception e) {
+            log.warn("Redis获取并删除缓存失败: key={}, error={}", key, e.getMessage());
             return null;
         }
     }

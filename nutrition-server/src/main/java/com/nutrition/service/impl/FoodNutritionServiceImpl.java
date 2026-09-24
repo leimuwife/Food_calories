@@ -1,10 +1,18 @@
 package com.nutrition.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.nutrition.common.BusinessException;
 import com.nutrition.dto.NutritionDTO;
 import com.nutrition.entity.FoodNutrition;
+import com.nutrition.enums.BizMsgEnum;
+import com.nutrition.enums.FoodDataSourceEnum;
+import com.nutrition.enums.FoodNutritionCacheEnum;
+import com.nutrition.enums.FoodQueryEnum;
 import com.nutrition.mapper.FoodNutritionMapper;
 import com.nutrition.service.FoodNutritionService;
+import com.nutrition.vo.FoodCategoryVO;
+import com.nutrition.vo.FoodSearchResultVO;
+import com.nutrition.vo.FoodVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,16 +41,6 @@ public class FoodNutritionServiceImpl implements FoodNutritionService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Redis Hash结构的统一Key
-     */
-    private static final String REDIS_HASH_KEY = "food:nutrition";
-
-    /**
-     * Redis Hash过期时间（7天）
-     */
-    private static final long REDIS_EXPIRE_DAYS = 7;
-
-    /**
      * 批量查询食材营养数据（供AI热量估算调用）
      * 执行逻辑：
      * 1. 优先从Redis Hash中批量查询（opsForHash().multiGet），命中直接返回
@@ -69,7 +67,8 @@ public class FoodNutritionServiceImpl implements FoodNutritionService {
         // ========== 第1步：从Redis批量查询 ==========
         try {
             List<Object> keyList = foodNameList.stream().map(s -> (Object) s).collect(Collectors.toList());
-            List<Object> cachedValues = redisTemplate.opsForHash().multiGet(REDIS_HASH_KEY, keyList);
+            List<Object> cachedValues = redisTemplate.opsForHash().multiGet(
+                    FoodNutritionCacheEnum.HASH_KEY.getStringValue(), keyList);
             for (int i = 0; i < foodNameList.size(); i++) {
                 String foodName = foodNameList.get(i);
                 Object cachedValue = cachedValues.get(i);
@@ -177,12 +176,131 @@ public class FoodNutritionServiceImpl implements FoodNutritionService {
 
         try {
             String jsonValue = serializeNutritionDTO(nutritionDTO);
-            redisTemplate.opsForHash().put(REDIS_HASH_KEY, foodName, jsonValue);
-            redisTemplate.expire(REDIS_HASH_KEY, REDIS_EXPIRE_DAYS, TimeUnit.DAYS);
+            redisTemplate.opsForHash().put(FoodNutritionCacheEnum.HASH_KEY.getStringValue(), foodName, jsonValue);
+            redisTemplate.expire(
+                    FoodNutritionCacheEnum.HASH_KEY.getStringValue(),
+                    FoodNutritionCacheEnum.EXPIRE_DAYS.getNumberValue(),
+                    TimeUnit.DAYS
+            );
             log.debug("食物营养数据已写入Redis缓存：{}", foodName);
         } catch (Exception e) {
             log.error("写入Redis缓存失败：foodName={}, error={}", foodName, e.getMessage(), e);
         }
+    }
+
+    /**
+     * 按关键词和分类分页查询食物。
+     *
+     * @param keyword  食物名称关键词
+     * @param category 食物分类
+     * @param page     页码
+     * @param pageSize 每页条数
+     * @return 食物分页结果
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public FoodSearchResultVO searchFood(String keyword, String category, int page, int pageSize) {
+        int currentPage = Math.max(page, 1);
+        int currentPageSize = pageSize > 0
+                ? Math.min(pageSize, FoodQueryEnum.MAX_PAGE_SIZE.getValue())
+                : FoodQueryEnum.DEFAULT_PAGE_SIZE.getValue();
+
+        LambdaQueryWrapper<FoodNutrition> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FoodNutrition::getDeleteFlag, 0);
+        if (keyword != null && !keyword.isBlank()) {
+            queryWrapper.like(FoodNutrition::getFoodName, keyword.trim());
+        }
+        if (category != null && !category.isBlank()) {
+            queryWrapper.eq(FoodNutrition::getFoodCategory, category.trim());
+        }
+
+        Long total = foodNutritionMapper.selectCount(queryWrapper);
+        int offset = (currentPage - 1) * currentPageSize;
+        queryWrapper.orderByAsc(FoodNutrition::getFoodName)
+                .last("LIMIT " + offset + "," + currentPageSize);
+        List<FoodVO> foodList = foodNutritionMapper.selectList(queryWrapper).stream()
+                .map(this::convertToFoodVO)
+                .toList();
+
+        log.debug("食物搜索完成: keyword={}, category={}, page={}, pageSize={}, total={}",
+                keyword, category, currentPage, currentPageSize, total);
+        return FoodSearchResultVO.builder()
+                .list(foodList)
+                .total(total)
+                .build();
+    }
+
+    /**
+     * 根据食物ID查询详情。
+     *
+     * @param id 食物ID
+     * @return 食物营养详情
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public FoodVO getFoodDetail(Long id) {
+        if (id == null) {
+            throw new BusinessException(BizMsgEnum.FOOD_ID_INVALID);
+        }
+        FoodNutrition nutrition = foodNutritionMapper.selectById(id);
+        if (nutrition == null) {
+            throw new BusinessException(BizMsgEnum.FOOD_NOT_FOUND);
+        }
+        return convertToFoodVO(nutrition);
+    }
+
+    /**
+     * 查询全部食物分类。
+     *
+     * @return 去重后的分类列表
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FoodCategoryVO> listCategories() {
+        List<Object> categoryValues = foodNutritionMapper.selectObjs(
+                new LambdaQueryWrapper<FoodNutrition>()
+                        .select(FoodNutrition::getFoodCategory)
+                        .eq(FoodNutrition::getDeleteFlag, 0)
+                        .isNotNull(FoodNutrition::getFoodCategory)
+                        .ne(FoodNutrition::getFoodCategory, "")
+                        .groupBy(FoodNutrition::getFoodCategory)
+                        .orderByAsc(FoodNutrition::getFoodCategory)
+        );
+        return categoryValues.stream()
+                .map(String::valueOf)
+                .map(category -> FoodCategoryVO.builder().category(category).build())
+                .toList();
+    }
+
+    /**
+     * 将食物实体转换为前端视图对象。
+     *
+     * @param entity 食物营养实体
+     * @return 食物视图对象
+     */
+    private FoodVO convertToFoodVO(FoodNutrition entity) {
+        return FoodVO.builder()
+                .id(entity.getId())
+                .foodName(entity.getFoodName())
+                .category(entity.getFoodCategory())
+                .caloriesPer100g(defaultDecimal(entity.getCalorie()))
+                .proteinPer100g(defaultDecimal(entity.getProtein()))
+                .fatPer100g(defaultDecimal(entity.getFat()))
+                .carbsPer100g(defaultDecimal(entity.getCarbohydrate()))
+                .fiberPer100g(BigDecimal.ZERO)
+                .ediblePortion(defaultDecimal(entity.getEdiblePart()))
+                .dataSource(FoodDataSourceEnum.CHINESE_FOOD_COMPOSITION_TABLE.getName())
+                .build();
+    }
+
+    /**
+     * 将空数值转换为零，避免前端处理空值。
+     *
+     * @param value 原始数值
+     * @return 非空数值
+     */
+    private BigDecimal defaultDecimal(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     /**

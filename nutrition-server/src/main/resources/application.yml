@@ -101,6 +101,7 @@ fastapi:
   api-secret-key: ${FASTAPI_SECRET_KEY:}
   estimate-path: /api/ai/estimate-calorie
   chat-path: /api/ai/chat
+  health-report-path: /api/ai/health-report
   knowledge-upload-path: /api/rag/document/upload
   knowledge-delete-path: /api/rag/document/delete
   knowledge-search-path: /api/rag/search/query

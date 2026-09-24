@@ -31,6 +31,11 @@ public class SysUser extends Common {
     @Schema(description = "密码哈希")
     private String passwordHash;
 
+    /** 密码可逆加密值，仅供受保护的管理端查看 */
+    @TableField("password_encrypted")
+    @Schema(description = "密码AES加密值")
+    private String passwordEncrypted;
+
     /** 关联附件表中的id */
     @Schema(description = "关联附件表中的id")
     private String fileIds;

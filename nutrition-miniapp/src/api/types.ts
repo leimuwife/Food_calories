@@ -11,9 +11,19 @@ export interface FoodVO {
   dataSource: string
 }
 
+export interface FoodSearchResult {
+  list: FoodVO[]
+  total: number
+}
+
+export interface FoodCategoryVO {
+  category: string
+}
+
 export interface UserVO {
   id: number
   openid: string
+  username: string
   nickname: string
   fileIds: string | null
   avatarUrl: string | null
@@ -108,11 +118,15 @@ export interface LoginParam {
 export interface RegisterParam {
   username: string
   password: string
-  nickname: string
+  confirmPassword: string
+  captchaId: string
+  captchaCode: string
+  nickname?: string
 }
 
-export interface WxLoginParam {
-  code: string
+export interface CaptchaVO {
+  captchaId: string
+  imageBase64: string
 }
 
 export interface DietRecordParam {
@@ -191,6 +205,22 @@ export interface NutritionistChatResult {
   newSession?: boolean
 }
 
+/** AI会话列表项 */
+export interface ChatSessionVO {
+  sessionId: string
+  userId?: number
+  lastMessage?: string | null
+  createTime: string
+  updateTime: string
+}
+
+/** AI会话中需要展示给用户的历史消息 */
+export interface ChatHistoryMessage {
+  role: 'user' | 'ai_answer'
+  content: string
+  createTime: string
+}
+
 export interface UserFeedback {
   id: number
   userId: number
@@ -212,4 +242,35 @@ export const FeedbackStatusMap: Record<number, string> = {
   [FeedbackStatus.PENDING]: '待处理',
   [FeedbackStatus.PROCESSING]: '处理中',
   [FeedbackStatus.COMPLETED]: '已完结'
+}
+
+
+/** 健康分析目标编码 */
+export type HealthGoalType = 'fitness' | 'weight_loss' | 'normal_diet' | 'weight_gain'
+
+/** 健康报告状态 */
+export type HealthReportStatus = 'current' | 'fallback'
+
+/** 单日热量数据 */
+export interface DailyCaloriePoint {
+  date: string
+  calories: number | string
+}
+
+/** 最近7天和30天热量趋势 */
+export interface HealthCalorieTrendVO {
+  last7Days: DailyCaloriePoint[]
+  last30Days: DailyCaloriePoint[]
+}
+
+/** 健康分析报告 */
+export interface HealthAnalysisReportVO {
+  reportId: number | string
+  goalType: HealthGoalType
+  goalLabel: string
+  reportContent: string
+  reportStatus: HealthReportStatus
+  last7Avg: number | string
+  last30Avg: number | string
+  generatedTime: string
 }

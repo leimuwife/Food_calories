@@ -92,6 +92,20 @@
             <path d="M18 20 L24 26 L18 32" stroke="#FFB6C1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </view>
+
+        <view class="menu-item" @tap="showLaunchNotice">
+          <view class="menu-icon-wrap">
+            <svg viewBox="0 0 48 48" class="menu-icon">
+              <path d="M10 20 L34 12 L34 30 L10 22 Z" fill="#FFB6C1"/>
+              <path d="M10 20 L8 26 L13 27 L15 22" fill="#FFB6C1"/>
+              <path d="M27 31 C29 35 33 36 36 34" stroke="#FF69B4" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </view>
+          <text class="menu-text">上线公告</text>
+          <svg viewBox="0 0 48 48" class="menu-arrow">
+            <path d="M18 20 L24 26 L18 32" stroke="#FFB6C1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </view>
       </view>
 
       <view class="bottom-spacing"></view>
@@ -208,6 +222,12 @@ function showAbout() {
 function showNotice() {
   popupTitle.value = '责任说明公告'
   popupContent.value = '本应用提供的热量计算仅供参考，实际热量可能因食材品种、烹饪方式等因素有所差异。用户在使用本应用进行饮食管理时，应结合自身情况合理安排饮食。本应用不对用户因使用本应用而产生的任何健康问题承担责任。如有健康疑问，请咨询专业医师或营养师。'
+  showPopup.value = true
+}
+
+function showLaunchNotice() {
+  popupTitle.value = '上线公告'
+  popupContent.value = '目前由于 ICP 备案等问题，本站并未上线微信小程序，请谅解。后续会慢慢上线，手机端体验更好。'
   showPopup.value = true
 }
 

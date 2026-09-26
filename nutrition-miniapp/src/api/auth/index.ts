@@ -1,5 +1,5 @@
 import request from '../request'
-import type { CaptchaVO, LoginResultVO, RegisterParam } from '../types'
+import type { CaptchaVO, LoginResultVO, RegisterParam, ResetPasswordParam } from '../types'
 
 /** 获取注册用图形验证码 */
 export function getCaptcha() {
@@ -24,6 +24,16 @@ export function login(username: string, password: string) {
 export function register(data: RegisterParam) {
   return request<void>({
     url: '/api/auth/register',
+    method: 'POST',
+    data,
+    showLoading: false,
+  })
+}
+
+/** 重置密码：通过用户名 + 注册手机号校验身份 */
+export function resetPassword(data: ResetPasswordParam) {
+  return request<void>({
+    url: '/api/auth/reset-password',
     method: 'POST',
     data,
     showLoading: false,

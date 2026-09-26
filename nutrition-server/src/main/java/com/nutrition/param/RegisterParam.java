@@ -21,6 +21,11 @@ public class RegisterParam {
     @NotBlank(message = "确认密码不能为空")
     private String confirmPassword;
 
+    /** 手机号：11位中国大陆手机号，注册时必填，不要求唯一 */
+    @NotBlank(message = "手机号不能为空")
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "请输入合法的11位手机号")
+    private String phone;
+
     @NotBlank(message = "验证码标识不能为空")
     private String captchaId;
 

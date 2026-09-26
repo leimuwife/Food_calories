@@ -23,6 +23,7 @@ import com.nutrition.param.FeedPublishParam;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.FeedService;
 import com.nutrition.service.UserService;
+import com.nutrition.util.OssUtil;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.FeedCommentVO;
 import com.nutrition.vo.FeedItemVO;
@@ -59,6 +60,7 @@ public class FeedServiceImpl extends ServiceImpl<FeedMapper, Feed> implements Fe
     private final FeedCommentMapper feedCommentMapper;
     private final TransactionTemplate transactionTemplate;
     private final com.nutrition.service.AttachmentService attachmentService;
+    private final OssUtil ossUtil;
 
     /**
      * 批量更新单次最大条数，防止 SQL 语句过长触发 MySQL max_allowed_packet 包超限
@@ -445,7 +447,8 @@ public class FeedServiceImpl extends ServiceImpl<FeedMapper, Feed> implements Fe
                 Long attachmentId = Long.parseLong(fileId);
                 com.nutrition.entity.Attachment attachment = attachmentMap.get(attachmentId);
                 if (attachment != null) {
-                    imageUrls.add(attachment.getFileUrl());
+                    // 私有 Bucket 模式下转换为短期签名 URL
+                    imageUrls.add(ossUtil.toAccessibleUrl(attachment.getFileUrl()));
                 }
             } catch (NumberFormatException e) {
                 log.warn("附件ID格式错误: fileId={}", fileId);

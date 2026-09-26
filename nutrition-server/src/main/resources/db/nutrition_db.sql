@@ -286,6 +286,7 @@ CREATE TABLE `sys_user` (
   `nickname` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '新用户' COMMENT '昵称',
   `username` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户名(账号登录)',
   `password_hash` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'BCrypt密码哈希',
+  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '注册手机号（不唯一，用于重置密码校验）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   `delete_flag` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除 0正常 1删除',

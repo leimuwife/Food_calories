@@ -52,9 +52,16 @@ public enum BizMsgEnum {
     USER_NOT_EXIST(404, "用户不存在"),
     USER_NOT_LOGIN(401, "请先登录"),
     PASSWORD_NOT_MATCH(400, "两次输入的密码不一致"),
+    PHONE_NOT_MATCH(400, "手机号错误"),
+    PHONE_FORMAT_INVALID(400, "请输入合法的11位手机号"),
+    RESET_PASSWORD_FAILED(400, "重置密码失败，请检查用户名和手机号"),
     CAPTCHA_EMPTY(400, "验证码不能为空"),
     CAPTCHA_EXPIRED_OR_INVALID(400, "验证码错误或已过期"),
     CAPTCHA_GENERATE_FAILED(500, "验证码生成失败，请稍后重试"),
+
+    // ========== 服务间回调鉴权 (CALLBACK) ==========
+    CALLBACK_UNAUTHORIZED(401, "回调鉴权失败"),
+    CALLBACK_API_KEY_NOT_CONFIGURED(500, "回调密钥未配置，请设置 FASTAPI_SECRET_KEY"),
 
     // ========== 打卡模块 (CHECKIN) ==========
     CHECKIN_RECORD_NOT_EXIST(404, "打卡记录不存在"),

@@ -32,9 +32,9 @@ public class JwtAuthFilter implements Filter {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/captcha",
+            "/api/auth/reset-password",
             "/api/auth/logout",
             "/api/food/",
-            "/api/attachment/",
             "/api/admin/login",
             // Python AI服务回调接口，使用API密钥鉴权，无需JWT
             "/api/rag/knowledge/callback",
@@ -43,8 +43,26 @@ public class JwtAuthFilter implements Filter {
             "/api/chat/session/flush",
     };
 
+    /**
+     * 需要 ADMIN 角色的路径前缀。
+     * AI 配置、内容审核、知识库管理属于后台管理能力，普通用户禁止访问。
+     */
+    private static final String[] ADMIN_ONLY_PREFIXES = {
+            "/api/admin/",
+            // 注意：新增配置接口为 POST /api/ai/config（无子路径），此处不带结尾斜杠以覆盖
+            "/api/ai/config",
+            "/api/audit/",
+            "/api/rag/knowledge/",
+            // 接口文档即使被显式开启（SWAGGER_ENABLED=true），也只允许 ADMIN 访问
+            "/swagger-ui",
+            "/v3/api-docs",
+    };
+
     /** 无需认证的正则路径（含动态路径参数，如会话历史回调） */
     private static final String[] WHITE_LIST_REGEX = {
+            // 附件URL解析：前端 <image> 标签直接引用，无法携带 JWT，需公开只读
+            // 仅放行 GET /api/attachment/{id}/url，上传/删除仍需登录
+            "^/api/attachment/\\d+/url$",
             // Python会话历史回调：/api/chat/session/{sessionId}/history
             "^/api/chat/session/\\d+/history$",
     };
@@ -110,8 +128,8 @@ public class JwtAuthFilter implements Filter {
         req.setAttribute("userId", userId);
         req.setAttribute("role", role);
 
-        // 管理端接口仅允许 ADMIN 角色访问，防止普通用户读取用户敏感信息
-        if (path.startsWith("/api/admin/") && !JwtRoleEnum.ADMIN.getCode().equals(role)) {
+        // 管理端接口仅允许 ADMIN 角色访问，防止普通用户读取用户敏感信息或调用管理能力
+        if (isAdminOnlyPath(path) && !JwtRoleEnum.ADMIN.getCode().equals(role)) {
             resp.setStatus(403);
             resp.setContentType("application/json;charset=UTF-8");
             resp.getWriter().write("{\"code\":403,\"message\":\"" + BizMsgEnum.ADMIN_PERMISSION_DENIED.getMessage() + "\",\"data\":null}");
@@ -119,6 +137,21 @@ public class JwtAuthFilter implements Filter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * 判断路径是否仅允许 ADMIN 访问
+     *
+     * @param path 请求URI
+     * @return true=需要管理员角色
+     */
+    private boolean isAdminOnlyPath(String path) {
+        for (String prefix : ADMIN_ONLY_PREFIXES) {
+            if (path.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

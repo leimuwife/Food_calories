@@ -40,7 +40,27 @@ service.interceptors.response.use(
     return res
   },
   (error: any) => {
-    ElMessage.error(error.message || '网络异常')
+    const status = error.response?.status
+    const message = error.response?.data?.message
+
+    if (status === 401) {
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_nickname')
+      localStorage.removeItem('admin_fileIds')
+      ElMessage.error(message || '登录已过期，请重新登录')
+
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+      return Promise.reject(error)
+    }
+
+    if (status === 403) {
+      ElMessage.error(message || '无权访问该功能')
+      return Promise.reject(error)
+    }
+
+    ElMessage.error(message || error.message || '网络异常')
     return Promise.reject(error)
   }
 )

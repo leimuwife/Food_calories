@@ -10,7 +10,7 @@ import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.param.RegisterParam;
-import com.nutrition.entity.Attachment;
+import com.nutrition.param.ResetPasswordParam;
 import com.nutrition.entity.SysUser;
 import com.nutrition.mapper.SysUserMapper;
 import com.nutrition.service.AttachmentService;
@@ -18,7 +18,6 @@ import com.nutrition.service.CaptchaService;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.UserFeedbackService;
 import com.nutrition.service.UserService;
-import com.nutrition.util.AesUtil;
 import com.nutrition.util.JwtUtil;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.LoginResultVO;
@@ -51,7 +50,6 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
     private final UserFeedbackService userFeedbackService;
     private final AttachmentService attachmentService;
     private final CaptchaService captchaService;
-    private final AesUtil aesUtil;
 
     /**
      * 使用用户名和密码登录。
@@ -110,12 +108,46 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
         user.setUsername(username);
         user.setNickname(StrUtil.blankToDefault(param.getNickname(), username));
         user.setPasswordHash(passwordEncoder.encode(param.getPassword()));
-        user.setPasswordEncrypted(aesUtil.encrypt(param.getPassword()));
+        user.setPhone(param.getPhone());
         // sys_user 表允许 delete_flag 为 NULL，必须显式写入正常状态，否则逻辑删除查询会过滤新用户
         user.setDeleteFlag(0);
 
         this.save(user);
         log.info("用户注册成功: userId={}, username={}", user.getId(), username);
+    }
+
+    /**
+     * 通过「用户名 + 注册手机号」校验身份后重置密码。
+     * <p>
+     * 手机号不唯一，仅作为身份校验因子，必须与用户名对应的账号手机号完全一致；
+     * 校验不通过统一返回「手机号错误」，避免泄露用户名是否存在。
+     * </p>
+     *
+     * @param param 重置密码参数
+     */
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordParam param) {
+        if (!param.getNewPassword().equals(param.getConfirmPassword())) {
+            throw new BusinessException(BizMsgEnum.PASSWORD_NOT_MATCH);
+        }
+
+        String username = param.getUsername().trim();
+        String phone = param.getPhone().trim();
+
+        SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, username));
+
+        // 用户不存在或手机号不匹配，统一提示「手机号错误」，防止枚举用户名
+        if (user == null || user.getPhone() == null || !user.getPhone().equals(phone)) {
+            log.warn("重置密码失败：用户名或手机号不匹配, username={}", username);
+            throw new BusinessException(BizMsgEnum.PHONE_NOT_MATCH);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(param.getNewPassword()));
+        this.updateById(user);
+        clearUserCache(user.getId());
+        log.info("用户重置密码成功: userId={}, username={}", user.getId(), username);
     }
 
     @Override
@@ -233,13 +265,13 @@ public class UserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impleme
             }
             Long id = Long.parseLong(firstId);
             log.debug("解析头像URL: fileIds={}, 解析出ID={}", fileIds, id);
-            Attachment attachment = attachmentService.getById(id);
-            if (attachment == null) {
+            // 走 AttachmentService.getUrl：私有 Bucket 模式下会自动生成短期签名 URL
+            String url = attachmentService.getUrl(id);
+            if (url == null) {
                 log.warn("解析头像URL: 附件不存在, id={}", id);
                 return null;
             }
-            String url = attachment.getFileUrl();
-            log.debug("解析头像URL: 附件ID={}, fileUrl={}", id, url);
+            log.debug("解析头像URL: 附件ID={}", id);
             return url;
         } catch (Exception e) {
             log.warn("解析头像URL失败: fileIds={}, error={}", fileIds, e.getMessage());

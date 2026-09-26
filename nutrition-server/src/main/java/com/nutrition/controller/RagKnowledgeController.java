@@ -4,6 +4,7 @@ import com.nutrition.common.Result;
 import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.enums.RagDocumentStatusEnum;
 import com.nutrition.service.RagKnowledgeService;
+import com.nutrition.util.CallbackAuthUtil;
 import com.nutrition.vo.KnowledgeCallbackVO;
 import com.nutrition.vo.KnowledgeDocumentVO;
 import com.nutrition.vo.KnowledgeUploadVO;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class RagKnowledgeController {
 
     private final RagKnowledgeService ragKnowledgeService;
+    private final CallbackAuthUtil callbackAuthUtil;
 
     /**
      * 上传知识库文档
@@ -120,7 +122,11 @@ public class RagKnowledgeController {
      */
     @PostMapping("/callback")
     @Operation(summary = "Python回调接口", description = "Python AI服务向量入库完成后的状态回调")
-    public Result<KnowledgeCallbackVO> callback(@RequestBody Map<String, Object> request) {
+    public Result<KnowledgeCallbackVO> callback(@RequestBody Map<String, Object> request,
+                                                HttpServletRequest httpRequest) {
+        // 校验服务间 API Key，防止回调接口被匿名伪造
+        callbackAuthUtil.validate(httpRequest.getHeader("Authorization"));
+
         log.info("收到Python回调: {}", request);
 
         try {

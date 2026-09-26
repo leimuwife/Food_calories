@@ -11,7 +11,6 @@ import com.nutrition.enums.JwtRoleEnum;
 import com.nutrition.mapper.AdminMapper;
 import com.nutrition.mapper.SysUserMapper;
 import com.nutrition.service.AdminService;
-import com.nutrition.util.AesUtil;
 import com.nutrition.util.JwtUtil;
 import com.nutrition.vo.AdminLoginVO;
 import com.nutrition.vo.AdminUserVO;
@@ -35,7 +34,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SysUserMapper sysUserMapper;
-    private final AesUtil aesUtil;
 
     /**
      * 管理员登录
@@ -141,29 +139,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
                 .id(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
-                .password(decryptPassword(user.getPasswordEncrypted()))
+                .phone(user.getPhone())
                 .createTime(user.getCreateTime())
                 .updateTime(user.getUpdateTime())
                 .deleteFlag(status)
                 .enabled(status == UserAccountStatusEnum.ENABLED.getValue())
                 .build();
-    }
-
-    /**
-     * 解密用户密码；旧用户没有可逆密文时返回提示文本。
-     *
-     * @param encryptedPassword AES加密密码
-     * @return 明文密码或不可查看提示
-     */
-    private String decryptPassword(String encryptedPassword) {
-        if (encryptedPassword == null || encryptedPassword.isBlank()) {
-            return "历史用户不可查看";
-        }
-        try {
-            return aesUtil.decrypt(encryptedPassword);
-        } catch (Exception e) {
-            log.error("用户密码解密失败: error={}", e.getMessage(), e);
-            return "密码解密失败";
-        }
     }
 }

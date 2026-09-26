@@ -24,7 +24,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @return 用户列表
      */
     @Select("""
-            SELECT id, openid, nickname, username, password_hash, password_encrypted,
+            SELECT id, openid, nickname, username, password_hash, phone,
                    file_ids, create_time, update_time, delete_flag
             FROM sys_user
             ORDER BY create_time DESC
@@ -47,7 +47,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @return 用户实体
      */
     @Select("""
-            SELECT id, openid, nickname, username, password_hash, password_encrypted,
+            SELECT id, openid, nickname, username, password_hash, phone,
                    file_ids, create_time, update_time, delete_flag
             FROM sys_user
             WHERE id = #{id}

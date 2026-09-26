@@ -177,7 +177,8 @@ public class AiConfigServiceImpl implements AiConfigService {
 
         // 解密API密钥
         String decryptedKey = aesUtil.decrypt(config.getApiKey());
-        log.info("测试AI配置连通性: id={}, modelName={}, message={}", id, config.getModelName(), message);
+        log.info("测试AI配置连通性: id={}, modelName={}, messageLength={}",
+                id, config.getModelName(), message == null ? 0 : message.length());
 
         // TODO: 后续接入Python-FastAPI AI服务后，使用解密后的密钥进行真实的API调用
         // 当前返回Mock测试结果

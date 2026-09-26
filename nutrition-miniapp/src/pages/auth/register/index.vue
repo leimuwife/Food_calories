@@ -41,6 +41,19 @@
       </view>
 
       <view class="form-item">
+        <text class="field-label">手机号</text>
+        <input
+          v-model="form.phone"
+          class="field-input"
+          type="number"
+          maxlength="11"
+          placeholder="请输入11位手机号"
+          placeholder-class="input-placeholder"
+          @input="onPhoneInput"
+        />
+      </view>
+
+      <view class="form-item">
         <text class="field-label">确认密码</text>
         <input
           v-model="form.confirmPassword"
@@ -100,6 +113,7 @@ const captchaId = ref('')
 const form = reactive({
   username: '',
   password: '',
+  phone: '',
   confirmPassword: '',
   captchaCode: '',
 })
@@ -123,6 +137,7 @@ async function handleRegister() {
   if (isLoading.value) return
   const username = form.username.trim()
   const password = form.password
+  const phone = form.phone.trim()
   const confirmPassword = form.confirmPassword
   const captchaCode = form.captchaCode.trim()
 
@@ -132,6 +147,10 @@ async function handleRegister() {
   }
   if (password.length < 6 || password.length > 32) {
     showToast('密码长度为6-32位')
+    return
+  }
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    showToast('请输入合法的11位手机号')
     return
   }
   if (password !== confirmPassword) {
@@ -148,6 +167,7 @@ async function handleRegister() {
     await register({
       username,
       password,
+      phone,
       confirmPassword,
       captchaId: captchaId.value,
       captchaCode,
@@ -170,6 +190,10 @@ function goLogin() {
 
 function onCaptchaInput(event: { detail: { value: string } }) {
   form.captchaCode = String(event.detail.value || '').replace(/\D/g, '').slice(0, 4)
+}
+
+function onPhoneInput(event: { detail: { value: string } }) {
+  form.phone = String(event.detail.value || '').replace(/\D/g, '').slice(0, 11)
 }
 
 function showToast(title: string) {

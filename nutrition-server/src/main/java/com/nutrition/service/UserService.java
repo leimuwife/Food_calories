@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.ProfileUpdateParam;
 import com.nutrition.param.RegisterParam;
+import com.nutrition.param.ResetPasswordParam;
 import com.nutrition.entity.SysUser;
 import com.nutrition.vo.LoginResultVO;
 import com.nutrition.vo.UserVO;
@@ -18,6 +19,13 @@ public interface UserService extends IService<SysUser> {
      * @param param 注册参数，包含图形验证码和两次密码
      */
     void register(RegisterParam param);
+
+    /**
+     * 通过「用户名 + 注册手机号」校验身份后重置密码。
+     *
+     * @param param 重置密码参数
+     */
+    void resetPassword(ResetPasswordParam param);
 
     SysUser getCurrentUser(Long userId);
 

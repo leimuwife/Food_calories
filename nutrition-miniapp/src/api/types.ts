@@ -119,9 +119,19 @@ export interface RegisterParam {
   username: string
   password: string
   confirmPassword: string
+  /** 注册手机号（11位，不要求唯一，用于重置密码校验） */
+  phone: string
   captchaId: string
   captchaCode: string
   nickname?: string
+}
+
+/** 重置密码参数：用户名 + 注册手机号校验身份 */
+export interface ResetPasswordParam {
+  username: string
+  phone: string
+  newPassword: string
+  confirmPassword: string
 }
 
 export interface CaptchaVO {

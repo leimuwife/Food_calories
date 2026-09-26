@@ -15,6 +15,7 @@ import com.nutrition.mapper.ContentAuditRecordMapper;
 import com.nutrition.config.WxConfigProperties;
 import com.nutrition.service.AttachmentService;
 import com.nutrition.service.ContentAuditService;
+import com.nutrition.util.OssUtil;
 import com.nutrition.util.WxTokenUtil;
 import com.github.houbb.sensitive.word.core.SensitiveWordHelper;
 import cn.hutool.core.util.StrUtil;
@@ -68,6 +69,7 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
     private final RestTemplate restTemplate;
     private final TransactionTemplate transactionTemplate;
     private final WxConfigProperties wxConfigProperties;
+    private final OssUtil ossUtil;
 
     /**
      * 微信审核专用线程池
@@ -119,8 +121,6 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
 
         validateScene(scene);
 
-        String contentSummary = content.length() > 50 ? content.substring(0, 50) + "..." : content;
-
         List<String> sensitiveWords = SensitiveWordHelper.findAll(content);
         if (!sensitiveWords.isEmpty()) {
             log.warn("本地敏感词命中: userId={}, words={}", userId, sensitiveWords);
@@ -147,7 +147,9 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("文本审核异常: userId={}, content={}, error={}", userId, contentSummary, e.getMessage(), e);
+            // 不记录被审核文本原文，仅记录长度，避免用户内容落盘
+            log.error("文本审核异常: userId={}, contentLength={}, error={}",
+                    userId, content == null ? 0 : content.length(), e.getMessage(), e);
             throw new BusinessException(BizMsgEnum.AUDIT_SERVICE_UNAVAILABLE);
         }
     }
@@ -208,21 +210,23 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
         for (String fileId : fileIds) {
             Long attachmentId = Long.parseLong(fileId);
             Attachment attachment = attachmentMap.get(attachmentId);
-            String imageUrl = attachment.getFileUrl();
+            String storedUrl = attachment.getFileUrl();
+            // 私有 Bucket 模式下需用短期签名 URL 才能下载；微信审核同样要求可访问地址
+            String imageUrl = ossUtil.toAccessibleUrl(storedUrl);
 
-            if (!isValidHttpsUrl(imageUrl)) {
-                log.warn("图片URL格式不正确: {}", imageUrl);
+            if (!isValidHttpsUrl(storedUrl)) {
+                log.warn("图片URL格式不正确: attachmentId={}", attachmentId);
                 throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_URL_INVALID);
             }
 
             byte[] imageBytes = downloadImage(imageUrl);
             if (imageBytes == null || imageBytes.length == 0) {
-                log.error("图片下载为空: imageUrl={}", imageUrl);
+                log.error("图片下载为空: attachmentId={}", attachmentId);
                 throw new BusinessException(BizMsgEnum.AUDIT_IMAGE_DOWNLOAD_FAILED);
             }
 
             imageBytesMap.put(fileId, imageBytes);
-            fileNameMap.put(fileId, extractFileName(imageUrl));
+            fileNameMap.put(fileId, extractFileName(storedUrl));
         }
 
         log.debug("图片预下载完成: 共 {} 张，已缓存到内存", fileIds.size());
@@ -734,11 +738,12 @@ public class ContentAuditServiceImpl extends ServiceImpl<ContentAuditRecordMappe
     private void logAuditResult(Long userId, String openid, String auditType,
                                  String content, String fileIds,
                                  AuditSceneEnum scene, AuditSuggestEnum suggest, String label) {
+        // 不记录被审核文本原文，仅记录长度；图片场景记录附件ID
         String contentInfo = "text".equals(auditType)
-                ? (content != null && content.length() > 50 ? content.substring(0, 50) + "..." : content)
+                ? String.valueOf(content == null ? 0 : content.length())
                 : fileIds;
 
-        log.info("审核完成: userId={}, openid={}, type={}, scene={}, suggest={}, label={}, content={}",
+        log.info("审核完成: userId={}, openid={}, type={}, scene={}, suggest={}, label={}, contentLength={}",
                 userId, openid, auditType, scene.getDescription(), suggest.getLabel(), label, contentInfo);
     }
 

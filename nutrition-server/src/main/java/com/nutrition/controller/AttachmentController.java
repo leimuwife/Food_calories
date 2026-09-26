@@ -10,6 +10,7 @@ import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.service.AttachmentService;
 import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.UserService;
+import com.nutrition.util.OssUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ public class AttachmentController {
     private final AttachmentService attachmentService;
     private final ContentAuditService contentAuditService;
     private final UserService userService;
+    private final OssUtil ossUtil;
 
     @PostMapping("/upload")
     @Operation(summary = "单文件上传", description = "上传单个文件到阿里云OSS，包含微信内容安全审核")
@@ -45,13 +47,12 @@ public class AttachmentController {
             @Parameter(description = "文件前缀路径，如 diet/、avatar/") @RequestParam(value = "prefix", required = false) String prefix,
             HttpServletRequest request) throws IOException {
 
-        if (userId == null) {
-            userId = (Long) request.getAttribute("userId");
-        }
-
-        if (userId == null) {
+        // 以 JWT 解析出的用户为准，忽略请求参数中传入的 userId，防止越权为他人上传
+        Long jwtUserId = (Long) request.getAttribute("userId");
+        if (jwtUserId == null) {
             throw new BusinessException(BizMsgEnum.USER_NOT_LOGIN);
         }
+        userId = jwtUserId;
 
         Attachment attachment = attachmentService.upload(file, userId, prefix);
 
@@ -79,7 +80,7 @@ public class AttachmentController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", attachment.getId());
-        result.put("fileUrl", attachment.getFileUrl());
+        result.put("fileUrl", ossUtil.toAccessibleUrl(attachment.getFileUrl()));
         result.put("fileName", attachment.getFileName());
         result.put("fileSize", attachment.getFileSize());
 
@@ -94,13 +95,12 @@ public class AttachmentController {
             @Parameter(description = "文件前缀路径，如 diet/、avatar/") @RequestParam(value = "prefix", required = false) String prefix,
             HttpServletRequest request) throws IOException {
 
-        if (userId == null) {
-            userId = (Long) request.getAttribute("userId");
-        }
-
-        if (userId == null) {
+        // 以 JWT 解析出的用户为准，忽略请求参数中传入的 userId，防止越权为他人上传
+        Long jwtUserId = (Long) request.getAttribute("userId");
+        if (jwtUserId == null) {
             throw new BusinessException(BizMsgEnum.USER_NOT_LOGIN);
         }
+        userId = jwtUserId;
 
         List<Attachment> attachments = attachmentService.uploadBatch(files, userId, prefix);
         List<Long> uploadedAttachmentIds = new ArrayList<>();
@@ -145,7 +145,7 @@ public class AttachmentController {
         List<Map<String, Object>> result = attachments.stream().map(attachment -> {
             Map<String, Object> item = new HashMap<>();
             item.put("id", attachment.getId());
-            item.put("fileUrl", attachment.getFileUrl());
+            item.put("fileUrl", ossUtil.toAccessibleUrl(attachment.getFileUrl()));
             item.put("fileName", attachment.getFileName());
             item.put("fileSize", attachment.getFileSize());
             return item;

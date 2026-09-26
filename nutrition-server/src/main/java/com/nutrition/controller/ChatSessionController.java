@@ -6,6 +6,7 @@ import com.nutrition.dto.ChatMessageFlushDTO;
 import com.nutrition.dto.ChatSessionCreateDTO;
 import com.nutrition.enums.BizMsgEnum;
 import com.nutrition.service.ChatSessionService;
+import com.nutrition.util.CallbackAuthUtil;
 import com.nutrition.vo.ChatMessageVO;
 import com.nutrition.vo.ChatSessionCreateVO;
 import com.nutrition.vo.ChatSessionVO;
@@ -32,6 +33,7 @@ import java.util.List;
 public class ChatSessionController {
 
     private final ChatSessionService chatSessionService;
+    private final CallbackAuthUtil callbackAuthUtil;
 
     /**
      * 创建全新聊天会话（Python create_session 调用）
@@ -42,7 +44,11 @@ public class ChatSessionController {
      */
     @PostMapping("/create")
     @Operation(summary = "创建AI聊天会话", description = "插入chat_session记录，返回雪花生成的sessionId")
-    public Result<ChatSessionCreateVO> createSession(@RequestBody ChatSessionCreateDTO dto) {
+    public Result<ChatSessionCreateVO> createSession(@RequestBody ChatSessionCreateDTO dto,
+                                                     HttpServletRequest httpRequest) {
+        // 校验服务间 API Key，防止回调接口被匿名伪造
+        callbackAuthUtil.validate(httpRequest.getHeader("Authorization"));
+
         log.info("创建AI聊天会话请求: userId={}", dto.getUserId());
 
         if (dto.getUserId() == null) {
@@ -74,7 +80,11 @@ public class ChatSessionController {
     @Operation(summary = "查询会话历史消息", description = "查询未被逻辑删除的最近N条消息，正序返回")
     public Result<List<ChatMessageVO>> getRecentHistory(
             @PathVariable("sessionId") Long sessionId,
-            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            HttpServletRequest httpRequest) {
+        // 校验服务间 API Key，防止会话历史被匿名读取
+        callbackAuthUtil.validate(httpRequest.getHeader("Authorization"));
+
         log.info("查询AI聊天历史请求: sessionId={}, limit={}", sessionId, limit);
 
         try {
@@ -158,7 +168,11 @@ public class ChatSessionController {
      */
     @PostMapping("/flush")
     @Operation(summary = "批量落盘会话消息", description = "会话不存在自动创建，消息批量插入chat_message")
-    public Result<Void> flushMessages(@RequestBody ChatMessageFlushDTO dto) {
+    public Result<Void> flushMessages(@RequestBody ChatMessageFlushDTO dto,
+                                      HttpServletRequest httpRequest) {
+        // 校验服务间 API Key，防止回调接口被匿名伪造
+        callbackAuthUtil.validate(httpRequest.getHeader("Authorization"));
+
         log.info("会话消息批量落盘请求: sessionId={}, messageCount={}",
                 dto.getSessionId(),
                 dto.getMessages() == null ? 0 : dto.getMessages().size());

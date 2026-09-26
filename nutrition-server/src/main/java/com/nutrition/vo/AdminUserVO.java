@@ -24,8 +24,8 @@ public class AdminUserVO {
     /** 昵称 */
     private String nickname;
 
-    /** 明文密码；旧用户无加密值时不可查看 */
-    private String password;
+    /** 注册手机号 */
+    private String phone;
 
     /** 创建时间 */
     private LocalDateTime createTime;

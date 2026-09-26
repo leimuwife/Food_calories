@@ -24,14 +24,15 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public AiChatResultDTO chat(String userMessage, String sessionId, Long userId) {
-        log.info("AI对话请求转发Python: sessionId={}, userId={}, message={}",
-                sessionId, userId, userMessage);
+        log.info("AI对话请求转发Python: sessionId={}, userId={}, messageLength={}",
+                sessionId, userId, userMessage == null ? 0 : userMessage.length());
         return fastApiClient.chat(userMessage, sessionId, userId);
     }
 
     @Override
     public AiChatResultDTO test(String testMessage, Long userId) {
-        log.info("AI配置连通性测试转发Python: userId={}, message={}", userId, testMessage);
+        log.info("AI配置连通性测试转发Python: userId={}, messageLength={}",
+                userId, testMessage == null ? 0 : testMessage.length());
         // 复用完整对话链路：新建会话走通即证明Python服务、会话回调、模型配置全部可用
         return fastApiClient.chat(testMessage, null, userId);
     }

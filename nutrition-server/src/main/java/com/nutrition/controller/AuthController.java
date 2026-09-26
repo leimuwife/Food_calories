@@ -4,6 +4,7 @@ import com.nutrition.common.Result;
 import com.nutrition.config.JwtAuthFilter;
 import com.nutrition.param.LoginParam;
 import com.nutrition.param.RegisterParam;
+import com.nutrition.param.ResetPasswordParam;
 import com.nutrition.service.CaptchaService;
 import com.nutrition.service.UserService;
 import com.nutrition.util.RedisCache;
@@ -61,6 +62,19 @@ public class AuthController {
     public Result<Void> register(@Valid @RequestBody RegisterParam param) {
         userService.register(param);
         return Result.ok("注册成功", null);
+    }
+
+    /**
+     * 重置密码
+     * 通过「用户名 + 注册手机号」校验身份后设置新密码，手机号不匹配时提示「手机号错误」。
+     *
+     * @param param 重置密码参数
+     * @return 操作结果
+     */
+    @PostMapping("/reset-password")
+    public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordParam param) {
+        userService.resetPassword(param);
+        return Result.ok("密码重置成功，请使用新密码登录", null);
     }
 
     /**

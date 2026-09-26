@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.nutrition.mapper.RagKnowledgeDocumentMapper;
 import com.nutrition.service.AttachmentService;
 import com.nutrition.service.RagKnowledgeService;
+import com.nutrition.util.OssUtil;
 import com.nutrition.vo.KnowledgeDocumentVO;
 import com.nutrition.vo.KnowledgeUploadVO;
 import com.nutrition.vo.PageVO;
@@ -51,6 +52,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
     private final FastApiProperties fastApiProperties;
     private final AttachmentService attachmentService;
     private final TransactionTemplate transactionTemplate;
+    private final OssUtil ossUtil;
 
     @Override
     public KnowledgeUploadVO uploadDocument(MultipartFile file, Long userId) {
@@ -79,8 +81,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             // 3. 上传文件到OSS，保存附件记录到sys_file表
             Attachment attachment = attachmentService.upload(file, userId, "rag/");
             String fileIds = String.valueOf(attachment.getId());
-            log.info("文件已上传OSS: fileName={}, attachmentId={}, url={}",
-                    originalFilename, attachment.getId(), attachment.getFileUrl());
+            log.info("文件已上传OSS: fileName={}, attachmentId={}", originalFilename, attachment.getId());
 
             // 4. 使用编程式事务保存文档记录（立即提交，避免Python回调时事务未提交导致查不到数据）
             Long docId = transactionTemplate.execute(status -> {
@@ -148,7 +149,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             Attachment attachment = attachmentService.getById(fileIdList.get(0));
             if (attachment != null) {
                 vo.setFileSize(attachment.getFileSize());
-                vo.setFileUrl(attachment.getFileUrl());
+                vo.setFileUrl(ossUtil.toAccessibleUrl(attachment.getFileUrl()));
             } else {
                 vo.setFileSize(0L);
             }
@@ -327,7 +328,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
         vo.setStatus(doc.getStatus());
         if (attachment != null) {
             vo.setFileSize(attachment.getFileSize());
-            vo.setFileUrl(attachment.getFileUrl());
+            vo.setFileUrl(ossUtil.toAccessibleUrl(attachment.getFileUrl()));
         } else {
             vo.setFileSize(0L);
         }
@@ -355,7 +356,7 @@ public class RagKnowledgeServiceImpl implements RagKnowledgeService {
             Attachment attachment = attachmentMap.get(fileIds.get(0));
             if (attachment != null) {
                 vo.setFileSize(attachment.getFileSize());
-                vo.setFileUrl(attachment.getFileUrl());
+                vo.setFileUrl(ossUtil.toAccessibleUrl(attachment.getFileUrl()));
             } else {
                 vo.setFileSize(0L);
             }

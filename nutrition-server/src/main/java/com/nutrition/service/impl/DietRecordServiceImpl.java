@@ -19,6 +19,7 @@ import com.nutrition.service.ContentAuditService;
 import com.nutrition.service.DietRecordService;
 import com.nutrition.service.UserService;
 import com.nutrition.util.IdConvertUtil;
+import com.nutrition.util.OssUtil;
 import com.nutrition.util.RedisCache;
 import com.nutrition.vo.DailyDietVO;
 import com.nutrition.vo.DietItemVO;
@@ -57,6 +58,7 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
     private final AttachmentService attachmentService;
     private final ContentAuditService contentAuditService;
     private final UserService userService;
+    private final OssUtil ossUtil;
 
     @Value("${nutrition.default-image.food}")
     private String defaultFoodImageUrl;
@@ -498,7 +500,10 @@ public class DietRecordServiceImpl extends ServiceImpl<DietRecordMapper, DietRec
 
         List<Attachment> attachments = attachmentMapper.selectList(queryWrapper);
         return attachments.stream()
-                .collect(Collectors.toMap(Attachment::getId, Attachment::getFileUrl, (u1, u2) -> u1));
+                // 私有 Bucket 模式下转换为短期签名 URL
+                .collect(Collectors.toMap(Attachment::getId,
+                        attachment -> ossUtil.toAccessibleUrl(attachment.getFileUrl()),
+                        (u1, u2) -> u1));
     }
 
     /**

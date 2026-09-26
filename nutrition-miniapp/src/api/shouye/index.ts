@@ -1,7 +1,8 @@
 import { useUserStore } from '@/stores/user'
 import type { FoodVO, DailyDietVO, DailySummaryVO } from '../types'
 
-const BASE_URL = 'http://localhost:8088'
+// 生产环境使用同域 /api（Nginx 反向代理），留空即请求当前站点域名，避免写死 localhost
+const BASE_URL = ''
 
 interface RequestOptions {
   url: string

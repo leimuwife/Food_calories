@@ -205,7 +205,7 @@ public class FastApiClient {
         Assert.isTrue(topk > 0 && topk <= 50, BizMsgEnum.RAG_TOPK_INVALID.getMessage());
 
         String url = buildUrl(properties.getKnowledgeSearchPath());
-        log.info("调用Python知识库检索接口: query={}, topk={}", query, topk);
+        log.info("调用Python知识库检索接口: queryLength={}, topk={}", query == null ? 0 : query.length(), topk);
 
         try {
             HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
@@ -221,21 +221,21 @@ public class FastApiClient {
                     response.getBody(), new TypeReference<>() {});
 
             if (result.isSuccess()) {
-                log.info("Python知识库检索成功: query={}, results={}", query,
+                log.info("Python知识库检索成功: queryLength={}, results={}", query == null ? 0 : query.length(),
                         result.getData() != null ? result.getData().size() : 0);
                 return result.getData();
             } else {
-                log.warn("Python知识库检索业务失败: query={}, msg={}", query, result.getMsg());
+                log.warn("Python知识库检索业务失败: queryLength={}, msg={}", query == null ? 0 : query.length(), result.getMsg());
                 throw new FastApiBusinessException(
                         BizMsgEnum.RAG_PYTHON_SEARCH_FAILED.getMessage() + ": " + result.getMsg());
             }
         } catch (RestClientException e) {
-            log.warn("Python知识库检索网络异常(将重试): query={}, error={}", query, e.getMessage());
+            log.warn("Python知识库检索网络异常(将重试): queryLength={}, error={}", query == null ? 0 : query.length(), e.getMessage());
             throw e;
         } catch (FastApiBusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Python知识库检索未知异常: query={}, error={}", query, e.getMessage(), e);
+            log.error("Python知识库检索未知异常: queryLength={}, error={}", query == null ? 0 : query.length(), e.getMessage(), e);
             throw new FastApiBusinessException(
                     BizMsgEnum.RAG_PYTHON_SEARCH_CALL_FAILED.getMessage() + ": " + e.getMessage(), e);
         }
@@ -261,7 +261,9 @@ public class FastApiClient {
         Assert.hasText(foodName, "食物名称不能为空");
 
         String url = buildUrl(properties.getEstimatePath());
-        log.info("调用Python热量估算接口: foodName={}, foodDesc={}, weight={}, url={}", foodName, foodDesc, weight, url);
+        // 不记录用户填写的食物描述原文，仅记录长度
+        log.info("调用Python热量估算接口: foodName={}, foodDescLength={}, weight={}, url={}",
+                foodName, foodDesc == null ? 0 : foodDesc.length(), weight, url);
 
         try {
             HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
@@ -334,8 +336,9 @@ public class FastApiClient {
         Assert.hasText(message, BizMsgEnum.CHAT_MESSAGE_EMPTY.getMessage());
 
         String url = buildUrl(properties.getChatPath());
-        log.info("调用Python营养师对话接口: sessionId={}, userId={}, message={}, url={}",
-                sessionId, userId, message, url);
+        // 不记录用户聊天内容，仅记录长度，避免隐私信息落盘
+        log.info("调用Python营养师对话接口: sessionId={}, userId={}, messageLength={}, url={}",
+                sessionId, userId, message == null ? 0 : message.length(), url);
 
         try {
             HttpHeaders headers = buildAuthHeaders(MediaType.APPLICATION_JSON);
@@ -376,12 +379,14 @@ public class FastApiClient {
                         BizMsgEnum.AI_CHAT_FAILED.getMessage() + ": " + result.getMsg());
             }
         } catch (RestClientException e) {
-            log.warn("Python对话网络异常(将重试): message={}, error={}", message, e.getMessage());
+            log.warn("Python对话网络异常(将重试): messageLength={}, error={}",
+                    message == null ? 0 : message.length(), e.getMessage());
             throw e;
         } catch (FastApiBusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Python对话未知异常: message={}, error={}", message, e.getMessage(), e);
+            log.error("Python对话未知异常: messageLength={}, error={}",
+                    message == null ? 0 : message.length(), e.getMessage(), e);
             throw new FastApiBusinessException(
                     BizMsgEnum.AI_CHAT_FAILED.getMessage() + ": " + e.getMessage(), e);
         }

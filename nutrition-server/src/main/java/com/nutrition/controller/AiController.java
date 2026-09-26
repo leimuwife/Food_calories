@@ -83,7 +83,9 @@ public class AiController {
         String sessionId = StringUtils.hasText(request.get("sessionId")) ? request.get("sessionId").trim() : null;
         Long userId = (Long) httpRequest.getAttribute("userId");
 
-        log.info("AI营养师对话请求: userId={}, sessionId={}, message={}", userId, sessionId, message);
+        // 不记录用户聊天内容，仅记录长度
+        log.info("AI营养师对话请求: userId={}, sessionId={}, messageLength={}",
+                userId, sessionId, message == null ? 0 : message.length());
 
         try {
             AiChatResultDTO result = aiModelService.chat(message, sessionId, userId);
@@ -96,8 +98,8 @@ public class AiController {
 
             return Result.ok(vo);
         } catch (Exception e) {
-            log.error("AI营养师对话异常: userId={}, sessionId={}, message={}, error={}",
-                    userId, sessionId, message, e.getMessage(), e);
+            log.error("AI营养师对话异常: userId={}, sessionId={}, messageLength={}, error={}",
+                    userId, sessionId, message == null ? 0 : message.length(), e.getMessage(), e);
             return Result.fail("对话服务暂时不可用，请稍后重试");
         }
     }
@@ -113,7 +115,7 @@ public class AiController {
     @Operation(summary = "AI配置测试", description = "测试AI模型配置连通性")
     public Result<ChatResponseVO> test(@RequestParam String message, HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        log.info("AI配置测试请求: userId={}, message={}", userId, message);
+        log.info("AI配置测试请求: userId={}, messageLength={}", userId, message == null ? 0 : message.length());
 
         try {
             AiChatResultDTO result = aiModelService.test(message, userId);
@@ -126,7 +128,8 @@ public class AiController {
 
             return Result.ok(vo);
         } catch (Exception e) {
-            log.error("AI配置测试异常: userId={}, message={}, error={}", userId, message, e.getMessage(), e);
+            log.error("AI配置测试异常: userId={}, messageLength={}, error={}",
+                    userId, message == null ? 0 : message.length(), e.getMessage(), e);
             return Result.fail("测试失败: " + e.getMessage());
         }
     }

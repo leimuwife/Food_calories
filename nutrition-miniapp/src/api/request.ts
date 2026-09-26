@@ -1,6 +1,8 @@
 import { useUserStore } from '@/stores/user'
 
-const BASE_URL = 'http://localhost:8088'
+// 生产环境使用同域 /api（Nginx 反向代理），留空即请求当前站点域名，避免写死 localhost
+// 如需前后端分离部署，可改为正式 API 地址，例如 https://api.example.com
+const BASE_URL = ''
 
 interface RequestOptions {
   url: string

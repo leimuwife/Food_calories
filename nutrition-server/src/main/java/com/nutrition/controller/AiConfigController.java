@@ -117,7 +117,7 @@ public class AiConfigController {
             configId = enabledConfig.getId();
         }
 
-        log.info("测试AI配置连通性: configId={}, message={}", configId, message);
+        log.info("测试AI配置连通性: configId={}, messageLength={}", configId, message == null ? 0 : message.length());
         String response = aiConfigService.testConnection(configId, message);
         
         Map<String, String> result = Map.of("message", message, "response", response);

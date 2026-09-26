@@ -48,6 +48,21 @@
           <text class="menu-value">V1.0.0</text>
         </view>
 
+        <view class="menu-item" @tap="goToAuthor">
+          <view class="menu-icon-wrap">
+            <svg viewBox="0 0 48 48" class="menu-icon">
+              <circle cx="24" cy="24" r="20" fill="#FFB6C1"/>
+              <circle cx="24" cy="18" r="3" fill="#FF69B4"/>
+              <path d="M18 33 L24 26 L30 33" stroke="#FF69B4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M19 24 L29 24" stroke="#FF69B4" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </view>
+          <text class="menu-text">作者简介</text>
+          <svg viewBox="0 0 48 48" class="menu-arrow">
+            <path d="M18 20 L24 26 L18 32" stroke="#FFB6C1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </view>
+
         <view class="menu-item" @tap="showAbout">
           <view class="menu-icon-wrap">
             <svg viewBox="0 0 48 48" class="menu-icon">
@@ -178,6 +193,10 @@ function goToEdit() {
 
 function goToFeedback() {
   uni.navigateTo({ url: '/pages/wode/feedback' })
+}
+
+function goToAuthor() {
+  uni.navigateTo({ url: '/pages/wode/about-author/index' })
 }
 
 function showAbout() {

@@ -2,7 +2,8 @@ import request from '../request'
 import type { DietRecordParam, FoodCategoryVO, FoodSearchResult, FoodVO } from '../types'
 import { useUserStore } from '@/stores/user'
 
-const BASE_URL = 'http://localhost:8088'
+// 生产环境使用同域 /api（Nginx 反向代理），留空即请求当前站点域名，避免写死 localhost
+const BASE_URL = ''
 
 export async function addDietRecord(data: DietRecordParam, filePath?: string): Promise<{ recordId: number }> {
   if (filePath && filePath.trim()) {

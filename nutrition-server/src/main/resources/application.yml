@@ -57,7 +57,8 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 使用 SLF4J，SQL 日志受 logging.level 控制；禁止生产环境使用 StdOutImpl 绕过日志级别直写 stdout
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.slf4j.Slf4jImpl}
   mapper-locations: classpath:mapper/*.xml
   global-config:
     db-config:
@@ -67,7 +68,9 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 jwt:
-  secret: ${JWT_SECRET:NutritionAssistantJwtSecretKey2024MustBeAtLeast256BitsLong!!}
+  # 生产环境必须通过环境变量 JWT_SECRET 注入随机密钥（建议 openssl rand -base64 64）
+  # 不提供默认值：未设置时应用启动失败，避免使用可预测的仓库默认密钥
+  secret: ${JWT_SECRET}
   expiration: 604800000
 
 aliyun:
@@ -77,15 +80,34 @@ aliyun:
     access-key-secret: ${OSS_ACCESS_KEY_SECRET}
     bucket-name: nutrition-file-202607
     domain:
+    # 私有 Bucket 模式：true 时上传不设公开读，读取由后端生成短期签名 URL。
+    # 开启后必须同时在阿里云控制台把 Bucket 读写权限改为「私有」，否则旧对象仍是公开的。
+    private-bucket: ${OSS_PRIVATE_BUCKET:false}
+    signed-url-expire-seconds: ${OSS_SIGNED_URL_EXPIRE_SECONDS:3600}
 
 logging:
   level:
-    com.nutrition: debug
+    # 生产默认 INFO，避免 DEBUG 级别把用户内容等敏感信息写入日志
+    com.nutrition: ${LOG_LEVEL_COM_NUTRITION:INFO}
     org.springframework.web: info
+
+# Swagger / OpenAPI 默认关闭，防止公网匿名访问接口文档。
+# 仅在本地开发时通过 SWAGGER_ENABLED=true 打开；开启后仍受 ADMIN 鉴权保护（见 JwtAuthFilter）。
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
 
 nutrition:
   default-image:
     food: https://nutrition-file-202607.oss-cn-beijing.aliyuncs.com/default/food-placeholder.png
+
+# 跨域来源白名单（逗号分隔）。默认空表示同域部署、不开放跨域。
+# 例如：app.cors.allowed-origins=https://www.example.com,https://admin.example.com
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 wx:
   mini:

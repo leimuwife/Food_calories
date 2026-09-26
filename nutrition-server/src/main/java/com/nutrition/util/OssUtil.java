@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.UUID;
 
 @Slf4j
@@ -53,7 +54,11 @@ public class OssUtil {
     private String uploadToOss(MultipartFile file, String filePath) throws IOException {
         try (InputStream inputStream = file.getInputStream()) {
             ossClient.putObject(ossConfig.getBucketName(), filePath, inputStream);
-            ossClient.setObjectAcl(ossConfig.getBucketName(), filePath, CannedAccessControlList.PublicRead);
+
+            // 私有 Bucket 模式下不再把对象设为公开读，读取时改用短期签名 URL
+            if (!ossConfig.isPrivateBucket()) {
+                ossClient.setObjectAcl(ossConfig.getBucketName(), filePath, CannedAccessControlList.PublicRead);
+            }
 
             String url;
             if (ossConfig.getDomain() != null && !ossConfig.getDomain().isEmpty()) {
@@ -62,11 +67,39 @@ public class OssUtil {
                 url = "https://" + ossConfig.getBucketName() + "." + ossConfig.getEndpoint() + "/" + filePath;
             }
 
-            log.info("文件上传OSS成功: key={}, url={}", filePath, url);
+            // 仅记录对象 key，避免完整地址（含域名信息）落盘
+            log.info("文件上传OSS成功: key={}", filePath);
             return url;
         } catch (Exception e) {
             log.error("文件上传OSS失败: {}", e.getMessage(), e);
             throw new RuntimeException("文件上传失败", e);
+        }
+    }
+
+    /**
+     * 把数据库中存储的文件地址转换为客户端可访问的地址。
+     * <p>
+     * 公开 Bucket：原样返回。
+     * 私有 Bucket：根据对象 key 生成带有效期的短期签名 URL。
+     * </p>
+     *
+     * @param fileUrl 数据库中保存的文件地址
+     * @return 可直接访问的地址
+     */
+    public String toAccessibleUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return fileUrl;
+        }
+        if (!ossConfig.isPrivateBucket() || ossClient == null) {
+            return fileUrl;
+        }
+        try {
+            String key = extractKeyFromUrl(fileUrl);
+            Date expiration = new Date(System.currentTimeMillis() + ossConfig.getSignedUrlExpireSeconds() * 1000L);
+            return ossClient.generatePresignedUrl(ossConfig.getBucketName(), key, expiration).toString();
+        } catch (Exception e) {
+            log.error("生成OSS签名URL失败: error={}", e.getMessage());
+            return fileUrl;
         }
     }
 

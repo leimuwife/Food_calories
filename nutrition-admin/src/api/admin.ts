@@ -16,7 +16,7 @@ export interface AdminUser {
   id: number | string
   username: string
   nickname: string
-  password: string
+  phone: string
   createTime: string
   updateTime: string
   deleteFlag: number | string

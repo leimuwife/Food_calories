@@ -31,10 +31,9 @@ public class SysUser extends Common {
     @Schema(description = "密码哈希")
     private String passwordHash;
 
-    /** 密码可逆加密值，仅供受保护的管理端查看 */
-    @TableField("password_encrypted")
-    @Schema(description = "密码AES加密值")
-    private String passwordEncrypted;
+    /** 手机号（注册时填写，不唯一，用于重置密码时校验身份） */
+    @Schema(description = "手机号")
+    private String phone;
 
     /** 关联附件表中的id */
     @Schema(description = "关联附件表中的id")

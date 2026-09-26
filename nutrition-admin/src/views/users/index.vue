@@ -10,11 +10,7 @@
         <el-table-column prop="id" label="用户ID" width="190" show-overflow-tooltip />
         <el-table-column prop="username" label="用户名" width="160" show-overflow-tooltip />
         <el-table-column prop="nickname" label="昵称" width="150" show-overflow-tooltip />
-        <el-table-column prop="password" label="密码" min-width="180" show-overflow-tooltip>
-          <template #default="scope">
-            <span class="password-text">{{ scope.row.password }}</span>
-          </template>
-        </el-table-column>
+        <el-table-column prop="phone" label="手机号" min-width="160" show-overflow-tooltip />
         <el-table-column prop="createTime" label="创建时间" width="180" show-overflow-tooltip />
         <el-table-column prop="updateTime" label="修改时间" width="180" show-overflow-tooltip />
         <el-table-column prop="deleteFlag" label="delete_flag" width="110" align="center">
@@ -94,8 +90,10 @@ async function loadUsers() {
     const response = await getAdminUserPage(pageNum.value, pageSize.value)
     userList.value = response.data.records || []
     total.value = Number(response.data.total) || 0
-  } catch (error) {
-    ElMessage.error('用户列表加载失败')
+  } catch (error: any) {
+    if (error?.response?.status !== 401) {
+      ElMessage.error('用户列表加载失败')
+    }
   } finally {
     loading.value = false
   }
@@ -116,9 +114,11 @@ async function changeStatus(user: AdminUser, enabled: boolean) {
     await updateAdminUserStatus(user.id, enabled)
     ElMessage.success(`用户已${action}`)
     await loadUsers()
-  } catch (error) {
+  } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error(`${action}失败`)
+      if (error?.response?.status !== 401) {
+        ElMessage.error(`${action}失败`)
+      }
     }
   }
 }

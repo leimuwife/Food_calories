@@ -30,18 +30,24 @@ public class AesUtil {
     private final String key;
     private SecretKeySpec secretKey;
 
-    public AesUtil(@Value("${ai.aes.key:NutritionAI2024AesKey32ByteLength!}") String key) {
+    public AesUtil(@Value("${ai.aes.key:}") String key) {
         this.key = key;
     }
 
     @PostConstruct
     public void init() {
+        // 生产环境必须通过 AI_AES_KEY 注入随机密钥，缺失时直接启动失败，避免使用可预测的默认密钥
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalStateException(
+                    "AES 密钥未配置：请设置环境变量 AI_AES_KEY（对应 ai.aes.key），建议使用 openssl rand -base64 48 生成");
+        }
         try {
             byte[] keyBytes = deriveKey(key);
             this.secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
             log.info("AES加密工具初始化成功");
         } catch (Exception e) {
             log.error("AES加密工具初始化失败", e);
+            throw new IllegalStateException("AES加密工具初始化失败", e);
         }
     }
 

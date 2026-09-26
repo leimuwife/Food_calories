@@ -128,7 +128,8 @@ public class AttachmentServiceImpl implements AttachmentService {
     @Override
     public String getUrl(Long id) {
         Attachment attachment = getById(id);
-        return attachment != null ? attachment.getFileUrl() : null;
+        // 私有 Bucket 模式下返回短期签名 URL，公开模式原样返回
+        return attachment != null ? ossUtil.toAccessibleUrl(attachment.getFileUrl()) : null;
     }
 
     /**

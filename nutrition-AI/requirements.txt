@@ -1,3 +1,10 @@
+# 本文件为「宽松范围」声明，便于日常升级。
+# 生产部署请改用锁定精确版本的 requirements.lock.txt：
+#   pip install -r requirements.lock.txt
+# 升级依赖后，请在虚拟环境中重新生成锁文件：
+#   .venv\Scripts\python.exe -m pip freeze > requirements.lock.txt   （Windows）
+#   ./.venv/bin/python -m pip freeze > requirements.lock.txt          （Linux）
+
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 python-multipart>=0.0.9
